@@ -1,0 +1,17 @@
+name = "galaxeye"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
+# Step 2 of the deploy: uncomment once the workers.dev check passes.
+# [[routes]]
+# pattern = "rohitrao.in/galaxeye"
+# zone_name = "rohitrao.in"
+#
+# [[routes]]
+# pattern = "rohitrao.in/galaxeye/*"
+# zone_name = "rohitrao.in"

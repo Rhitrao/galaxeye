@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Panel sourcing workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --film:#EDF0F2; --sheet:#FFFFFF; --ink:#22303A; --ink-2:#56646E; --rule:#CBD3D8;
+  --kapton:#B96E0C; --kapton-soft:#F6E7D0; --crit:#B3261E; --crit-soft:#F7DEDB;
+  --ok:#2E7D5B; --ok-soft:#DCEFE5; --bar:#8C9AA4; --bar-dev:#C4CDD3;
+  --r1:#B96E0C; --r2:#3F6C8C; --r3:#5D7F4E; --r4:#7A5C99;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --film:#141A1F; --sheet:#1C242B; --ink:#E3E8EB; --ink-2:#9AA8B1; --rule:#33404A;
+    --kapton:#E3A04A; --kapton-soft:#3A2C18; --crit:#F0766B; --crit-soft:#3B1F1D;
+    --ok:#6BC49A; --ok-soft:#18332A; --bar:#64737D; --bar-dev:#3A4751;
+    --r1:#E3A04A; --r2:#7FAACB; --r3:#94B784; --r4:#B79BD6;
+  }
+}
+:root[data-theme="dark"]{
+  --film:#141A1F; --sheet:#1C242B; --ink:#E3E8EB; --ink-2:#9AA8B1; --rule:#33404A;
+  --kapton:#E3A04A; --kapton-soft:#3A2C18; --crit:#F0766B; --crit-soft:#3B1F1D;
+  --ok:#6BC49A; --ok-soft:#18332A; --bar:#64737D; --bar-dev:#3A4751;
+  --r1:#E3A04A; --r2:#7FAACB; --r3:#94B784; --r4:#B79BD6;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 120px)}
+body{margin:0;background:var(--film);color:var(--ink);font-family:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums}
+a{color:var(--kapton)}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--kapton);outline-offset:2px}
+[hidden]{display:none!important}
+
+.page{max-width:1040px;margin:0 auto;padding:28px clamp(14px,3vw,32px) 80px}
+header h1{font-stretch:125%;font-weight:800;font-size:clamp(24px,3.2vw,34px);line-height:1.1;letter-spacing:-.02em;margin:0 0 8px;max-width:26ch}
+header p{color:var(--ink-2);margin:0 0 20px;max-width:68ch}
+
+.steps{display:flex;gap:0;border:1px solid var(--rule);background:var(--sheet);overflow-x:auto;scrollbar-width:none}
+.steps::-webkit-scrollbar{display:none}
+.steps button{flex:1 0 auto;border:0;border-right:1px solid var(--rule);background:transparent;padding:10px 14px;text-align:left;cursor:pointer;font-size:13.5px;color:var(--ink-2);display:flex;gap:8px;align-items:baseline;white-space:nowrap}
+.steps button:last-child{border-right:0}
+.steps button .n{font-weight:750;font-stretch:112%;color:var(--ink-2)}
+.steps button[aria-current="step"]{background:var(--kapton-soft);color:var(--ink);font-weight:650;box-shadow:inset 0 -3px 0 var(--kapton)}
+.steps button[aria-current="step"] .n{color:var(--kapton)}
+.steps button.seen .n{color:var(--ink)}
+
+.status{position:sticky;top:0;z-index:5;margin:10px 0 0;background:var(--sheet);border:1px solid var(--rule);border-left:6px solid var(--ok);padding:10px 14px;display:flex;flex-wrap:wrap;gap:4px 18px;align-items:baseline;font-size:14px}
+.status.late{border-left-color:var(--crit)}
+.status b{font-weight:700}
+.status .st-route{font-weight:650}
+.status .st-flag{font-weight:700}
+.status.late .st-flag{color:var(--crit)}
+.status:not(.late) .st-flag{color:var(--ok)}
+.status .st-note{color:var(--ink-2);font-size:12.5px;margin-left:auto}
+
+.step{margin-top:26px}
+.step h2{font-stretch:115%;font-weight:780;font-size:clamp(20px,2.4vw,25px);margin:0 0 6px;letter-spacing:-.01em}
+.step .intro{color:var(--ink-2);margin:0 0 18px;max-width:70ch}
+h3{font-stretch:108%;font-weight:720;font-size:16px;margin:26px 0 6px}
+.note{color:var(--ink-2);font-size:13.5px;margin:0 0 10px;max-width:72ch}
+
+.card{background:var(--sheet);border:1px solid var(--rule);padding:16px 18px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:4px 28px}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+
+.ctl{margin:12px 0 0}
+.ctl-head{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.ctl-head output{font-weight:700;white-space:nowrap}
+.ctl input[type=range]{width:100%;accent-color:var(--kapton);margin:4px 0 0}
+.ctl select{width:100%;margin-top:4px;padding:6px;background:var(--sheet);border:1px solid var(--rule);border-radius:3px}
+.ctl .hint{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+.ctl.dim{opacity:.45}
+.ph{display:inline-block;font-size:11px;padding:0 5px;border-radius:2px;background:var(--kapton-soft);color:var(--kapton);margin-left:5px;vertical-align:1px}
+.tog{display:flex;gap:10px;align-items:flex-start;margin:12px 0 0;font-size:14px;cursor:pointer}
+.tog input{accent-color:var(--kapton);margin-top:4px;flex:none}
+.tog .hint{display:block;font-size:12.5px;color:var(--ink-2)}
+
+details.more{margin-top:14px;border-top:1px solid var(--rule);padding-top:10px}
+details.more>summary{cursor:pointer;font-weight:650;font-size:14px;color:var(--kapton)}
+
+.bigfig{display:flex;flex-wrap:wrap;gap:10px 34px;margin:4px 0 8px}
+.bigfig div{min-width:110px}
+.bigfig strong{display:block;font-stretch:118%;font-weight:780;font-size:30px;line-height:1.1}
+.bigfig span{font-size:13px;color:var(--ink-2)}
+
+.fibres{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.fib{border:1px solid var(--rule);background:var(--sheet);padding:10px 12px;cursor:pointer;text-align:left;border-radius:3px}
+.fib[aria-checked="true"]{border-color:var(--kapton);box-shadow:inset 0 0 0 1px var(--kapton);background:var(--kapton-soft)}
+.fib b{display:block;font-size:16px;font-stretch:112%}
+.fib span{display:block;font-size:12.5px;color:var(--ink-2)}
+
+.routes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.rc{position:relative;border:1px solid var(--rule);background:var(--sheet);padding:14px 16px 12px 18px;cursor:pointer;display:block}
+.rc input{position:absolute;opacity:0;pointer-events:none}
+.rc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--rc)}
+.rc.sel{border-color:var(--kapton);box-shadow:inset 0 0 0 1px var(--kapton)}
+.rc:focus-within{outline:2px solid var(--kapton);outline-offset:2px}
+.rc .t{font-weight:700;font-stretch:108%;font-size:15.5px;margin:0 0 4px}
+.rc .d{font-size:13px;color:var(--ink-2);margin:0 0 10px}
+.rc dl{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:0;font-size:13.5px}
+.rc dt{color:var(--ink-2)}
+.rc dd{margin:0;font-weight:600}
+.late-t{color:var(--crit)!important}
+.ok-t{color:var(--ok)!important}
+.tags{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
+.tags span{font-size:11.5px;padding:1px 6px;border-radius:2px;background:var(--film);color:var(--ink)}
+
+table{border-collapse:collapse;width:100%;font-size:14px}
+.tbl{overflow-x:auto;background:var(--sheet);border:1px solid var(--rule)}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-weight:650;font-size:13px;color:var(--ink-2)}
+tr:last-child td{border-bottom:0}
+tr.sel td{background:var(--kapton-soft)}
+.num{text-align:right;white-space:nowrap}
+th.num{white-space:normal}
+.yes{color:var(--crit);font-weight:650}
+.no{color:var(--ok);font-weight:650}
+.exp input{width:64px;padding:3px 5px;border:1px solid var(--rule);border-radius:3px;background:var(--sheet)}
+.exp input.bad{border-color:var(--crit)}
+.small{font-size:11.5px;color:var(--ink-2)}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{border:1px solid var(--rule);background:var(--sheet);border-radius:3px;padding:6px 10px;font-size:13.5px;cursor:pointer}
+.chips button[aria-pressed="true"]{background:var(--crit-soft);border-color:var(--crit);color:var(--ink)}
+.chips button:hover{border-color:var(--kapton)}
+
+.chart{background:var(--sheet);border:1px solid var(--rule);overflow-x:auto;padding:8px 6px}
+.chart svg{display:block;min-width:720px;width:100%;height:auto}
+svg text{fill:var(--ink);font-family:inherit;font-size:12px}
+svg .muted{fill:var(--ink-2)}
+
+.sens{display:grid;grid-template-columns:minmax(150px,260px) 1fr;gap:6px 12px;align-items:center;font-size:13.5px}
+.sens .barw{background:var(--film);height:14px}
+.sens .barf{background:var(--crit);height:14px}
+.sens .val{font-size:12.5px;color:var(--ink-2)}
+
+.dots{white-space:nowrap}
+.dots i{display:inline-block;width:9px;height:9px;margin-right:2px;border:1px solid var(--ink-2)}
+.dots i.on{background:var(--ink);border-color:var(--ink)}
+.dots.hi i.on{background:var(--crit);border-color:var(--crit)}
+
+.gloss{display:grid;grid-template-columns:minmax(120px,190px) 1fr;gap:6px 16px;margin:10px 0 0;font-size:14px}
+.gloss dt{font-weight:650}
+.gloss dd{margin:0;color:var(--ink-2)}
+@media (max-width:760px){.gloss{grid-template-columns:1fr}.gloss dd{margin-bottom:6px}}
+.vend{background:var(--sheet);border:1px solid var(--rule);padding:12px 14px;margin:0 0 8px}
+.vend .vh{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between}
+.vend .vh a{font-weight:700;font-stretch:108%}
+.vend p{margin:6px 0 0;font-size:13.5px;max-width:78ch}
+.vend select{padding:4px 6px;border:1px solid var(--rule);border-radius:3px;background:var(--sheet);font-size:13px}
+.vend details{margin-top:8px}
+.vend summary{cursor:pointer;font-size:13.5px;font-weight:600}
+.scgrid{display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:6px 12px;align-items:center;margin-top:8px;font-size:13.5px}
+.scgrid select:disabled{opacity:.5}
+.vgroup{font-weight:650;font-size:14px;margin:14px 0 6px}
+.verdict-s{font-weight:700}
+.terms{margin:0;padding-left:20px}
+.terms li{margin:0 0 6px;font-size:14px;max-width:78ch}
+.summary p{margin:0 0 12px;max-width:72ch}
+.summary p:last-child{margin-bottom:0}
+.src li{margin:0 0 6px;font-size:13.5px}
+
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:28px;border-top:1px solid var(--rule);padding-top:16px}
+.btn{border:1px solid var(--rule);background:var(--sheet);border-radius:3px;padding:8px 14px;font-size:14px;cursor:pointer}
+.btn.primary{background:var(--kapton);border-color:var(--kapton);color:#fff;font-weight:650}
+:root[data-theme="dark"] .btn.primary{color:#141A1F}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .btn.primary{color:#141A1F} }
+.btn:hover{border-color:var(--kapton)}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.foot{margin-top:34px;font-size:12.5px;color:var(--ink-2);max-width:72ch}
+
+@media (max-width: 760px){
+  .grid2,.split,.routes{grid-template-columns:1fr}
+  .fibres{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .status{font-size:13px;gap:2px 12px;padding:8px 12px}
+  .status .st-note{display:none}
+  .steps button .lbl{display:none}
+  .steps button[aria-current="step"] .lbl{display:inline}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="page">
+<header>
+  <h1>Sourcing the CFRP honeycomb panels, one decision at a time</h1>
+  <p>Six steps, from what we need to what I would do. Each step has a few inputs; move one and the date, cost and risk update straight away. Inputs tagged <span class="ph">placeholder</span> are my estimates until suppliers reply.</p>
+</header>
+
+<nav class="steps" id="steps" aria-label="Steps"></nav>
+<div class="status" id="status" aria-live="polite"></div>
+
+<!-- Step 1 -->
+<section class="step" data-step="1">
+  <h2>What we need</h2>
+  <p class="intro">Each satellite needs six to eight lightweight panels, the largest about 700 by 500 mm and 10 to 25 mm thick. Each panel is a sandwich: thin carbon-fibre skins glued to an aluminium honeycomb middle, with metal inserts so equipment can be bolted on. Test sets come first, and flight panels must reach the satellite team by the date below.</p>
+  <div class="split">
+    <div class="card"><div id="c1"></div></div>
+    <div class="card">
+      <h3 style="margin-top:0">Panels to buy</h3>
+      <div class="bigfig" id="demand"></div>
+      <p class="note" id="demandNote" style="margin:0"></p>
+    </div>
+  </div>
+  <details class="more"><summary>What the words mean</summary>
+    <dl class="gloss">
+      <dt>CFRP</dt><dd>Carbon-fibre reinforced plastic: carbon threads set in hard resin. Very stiff for its weight.</dd>
+      <dt>Honeycomb sandwich panel</dt><dd>Two thin skins glued to a honeycomb middle. Like corrugated cardboard, it is stiff because the skins are held apart.</dd>
+      <dt>Prepreg</dt><dd>Carbon cloth already soaked in resin, kept frozen until use, then cured hard in an oven.</dd>
+      <dt>Insert</dt><dd>A threaded metal bush glued into the panel so a bolt has something to grip.</dd>
+      <dt>Structural model</dt><dd>Panels built early to check fit, weight and stiffness. Not flown.</dd>
+      <dt>Engineering model</dt><dd>A trial build of the real design, used to find problems.</dd>
+      <dt>Qualification model</dt><dd>A set tested harder than flight to prove the design. Not flown.</dd>
+      <dt>Protoflight</dt><dd>Skipping the qualification model and testing the flight panels themselves, a bit more gently.</dd>
+      <dt>RFI and RFQ</dt><dd>Requests to suppliers: first for information, then for a price.</dd>
+      <dt>Export licence</dt><dd>Government permission to ship a controlled material. Aerospace carbon fibre needs one because it could also go into weapons.</dd>
+      <dt>Critical path</dt><dd>The chain of tasks with no spare time. Any delay on it delays delivery.</dd>
+      <dt>Coupon</dt><dd>A small test sample made the same way as the real part, then broken to measure strength.</dd>
+    </dl>
+  </details>
+</section>
+
+<!-- Step 2 -->
+<section class="step" data-step="2" hidden>
+  <h2>Engineering choices</h2>
+  <p class="intro">The brief leaves these open. Pick the likely answer for each. You can change them later and every step after this one updates.</p>
+  <h3 style="margin-top:0">Face-sheet fibre</h3>
+  <p class="note">Stiffer fibre gives a lighter, stiffer panel, but costs more, takes longer to get and has fewer makers.</p>
+  <div class="fibres" id="fibres" role="radiogroup" aria-label="Face-sheet fibre"></div>
+  <p class="note" style="margin-top:8px">Cost and lead-time effects per fibre are placeholders. Supplier counts are my read of the market.</p>
+  <div class="card" style="margin-top:14px"><div class="grid2" id="c2"></div></div>
+  <h3>Export control check</h3>
+  <p class="note">Governments control strong, stiff carbon fibre because it can also be used in missiles. The test uses stiffness and strength per unit of weight. One list (ECCN 1C010.b) catches fibres above both limits; another (1C210.a) catches fibres above either one. Every grade below lands on at least one list, so we need a licence whichever fibre we pick. Change a density to check the maths.</p>
+  <div class="tbl exp"><table id="export"></table></div>
+</section>
+
+<!-- Step 3 -->
+<section class="step" data-step="3" hidden>
+  <h2>Choose a route</h2>
+  <p class="intro">There are four ways to get the panels, from buying them finished to making them ourselves. All four use the same inputs. Pick one to look at in detail; you can switch any time.</p>
+  <div class="routes" id="routeCards" role="radiogroup" aria-label="Sourcing route"></div>
+  <h3>Backup supplier</h3>
+  <p class="note">The satellite cannot fly without these panels. Relying on one supplier with no backup is the riskiest way to buy something that critical, so pick how much cover to pay for.</p>
+  <div class="card"><div class="grid2" id="c3s"></div><p class="note" id="supplyOut" style="margin:14px 0 0"></p></div>
+  <h3>Who owns what</h3>
+  <div class="tbl"><table id="owners"></table></div>
+  <h3>Candidate suppliers for this route</h3>
+  <p class="note" id="vendNote"></p>
+  <div id="vendors"></div>
+  <details class="more"><summary>What each approval stage means</summary><dl class="gloss" id="gates"></dl></details>
+  <details class="more"><summary>How suppliers are scored</summary>
+    <p class="note" style="margin-top:8px">Five questions, each scored 1 (poor) to 5 (strong) once a supplier has replied to our RFI. The weights are my judgment for a part the satellite cannot fly without, adapted from how companies score software vendors. A total of 75 or more goes on the shortlist, 50 to 74 needs a closer look, and below 50 is dropped.</p>
+    <dl class="gloss" id="crits"></dl>
+  </details>
+</section>
+
+<!-- Step 4 -->
+<section class="step" data-step="4" hidden>
+  <h2 id="s4title">Schedule</h2>
+  <p class="intro">Each bar is a task, in weeks from today. Red bars are the critical path: tasks with no spare time, so any delay there delays delivery. The amber line is when the satellite team needs the panels.</p>
+  <h3 style="margin-top:0">Ways to save time</h3>
+  <div class="card" id="c4m"></div>
+  <h3>Try a stress case</h3>
+  <p class="note">What happens if something goes wrong? Switch on one or several. Switching one off puts your own value back.</p>
+  <div class="chips" id="chips"></div>
+  <h3>Plan</h3>
+  <div class="chart" id="gantt"></div>
+  <h3>What moves the date</h3>
+  <p class="note" id="sensNote"></p>
+  <div class="card"><div class="sens" id="sens"></div></div>
+  <details class="more"><summary>Change the durations</summary>
+    <p class="note" style="margin-top:8px">Only the tasks this route uses are shown.</p>
+    <div class="grid2" id="c4d"></div>
+  </details>
+</section>
+
+<!-- Step 5 -->
+<section class="step" data-step="5" hidden>
+  <h2>Cost and risk</h2>
+  <p class="intro">Total spend as each satellite is built. Each line starts above zero because of one-off costs such as tooling, test sets and qualification. The route you picked is the thick line.</p>
+  <div class="chart" id="costChart"></div>
+  <p class="note" id="costNote" style="margin-top:8px"></p>
+  <details class="more"><summary>Change the cost assumptions</summary>
+    <p class="note" style="margin-top:8px">All of these are placeholders until quotes arrive. Amounts are in lakh rupees unless shown.</p>
+    <div class="grid2" id="c5"></div>
+  </details>
+  <h3 id="riskTitle">Risks</h3>
+  <p class="note">1 is low, 5 is high. Scores change with the inputs.</p>
+  <div class="tbl"><table id="risks"></table></div>
+  <h3>What goes in the contract</h3>
+  <p class="note" id="termsNote"></p>
+  <ol class="terms" id="terms"></ol>
+</section>
+
+<!-- Step 6 -->
+<section class="step" data-step="6" hidden>
+  <h2>Recommendation</h2>
+  <p class="intro">Written from the inputs you have set, so it changes when they do.</p>
+  <div class="card summary" id="summary"></div>
+  <div class="tools">
+    <button class="btn" id="copyLink">Copy link to this scenario</button>
+    <button class="btn" id="reset">Start again from the base plan</button>
+  </div>
+  <h3>Sources</h3>
+  <ol class="src">
+    <li><a href="https://satnews.com/2026/05/03/galaxeye-successfully-launches-mission-drishti-optosar-satellite/">SatNews, May 2026</a>: Drishti is about 190 kg, launched on Falcon 9 into a 500 km sun-synchronous orbit; target of 10 satellites by 2030.</li>
+    <li><a href="https://www.spacex.com/assets/media/falcon-users-guide-2025-05-09.pdf">Falcon Payload User's Guide</a>: random vibration MPE of 5.13 Grms at P95/50; published loads exclude qualification factors.</li>
+    <li><a href="https://experiorlabs.com/wp-content/uploads/2023/06/Rideshare_Payload_Users_Guide.pdf">Rideshare Payload User's Guide</a>: no elastic modes below 40 Hz; fleet qualification or protoqualification of every flight unit.</li>
+    <li><a href="https://www.bis.gov/node/21492">BIS guidance on ECCN 1C010.b</a> and <a href="https://antcomposites.com/carbon-fiber-export-control/">summary of 1C210.a thresholds</a>.</li>
+    <li><a href="https://www.toraycma.com/products/carbon-fiber/">Toray fibre properties</a>; T300 density from the <a href="https://www.rockwestcomposites.com/on/demandware.static/Sites-RWC-Site/Sites-rwc-master-catalog/-/wysiwyg/T300DataSheet_1.pdf">T300 datasheet</a>; M55J density from its datasheet. T800H and M40J densities are typical values to confirm.</li>
+    <li><a href="https://etd.gsfc.nasa.gov/capabilities/outgassing-database/user-guide/">NASA GSFC outgassing database</a>: screening limits of TML 1.0% and CVCM 0.10%.</li>
+    <li><a href="https://spacenews.com/how-to-rapidly-produce-high-volume-satellite-structures/">SpaceNews on Beyond Gravity</a> (all 650 OneWeb panel sets, automated insert potting) and <a href="https://www.kistler.com/INT/en/beyond-gravity-tests-satellite-sandwich-panel-inserts-with-kistler-proofload-testing-machine/C00000858">Kistler case study</a> (every insert proof-loaded up to 4 kN with the force curve recorded).</li>
+    <li><a href="https://ananthtech.com/products/space/solar-panels">Ananth Technologies</a>, <a href="https://spacestructures.com/products/honeycomb-sandwich-panels">Space Structures GmbH</a>, <a href="https://acpcomposites.com/shop/sandwich-panels/aluminum-core-panels/aluminum-carbon-fiber-sandwich-panel">ACP Composites</a> (accepts customer-owned materials), <a href="https://www.euro-composites.com/en/aluminium-wabe/">Euro-Composites</a>.</li>
+    <li><a href="https://www.nsilindia.co.in/testing-service">NSIL testing service</a> and <a href="https://www.isro.gov.in/URSC.html">URSC facilities</a> for qualification test slots.</li>
+    <li>Insert strength varies widely between specimens, and hand sizing of potted inserts does not match tests well: <a href="https://consensus.app/papers/details/baa711cc30275eb8821f760a156452c0/">Raghu et al., 2009</a>; <a href="https://consensus.app/papers/details/3c8cf53f51d9537eac03c3c4ff822cb3/">Wolff et al., 2018</a>.</li>
+  </ol>
+  <p class="foot">Prepared for a hiring assignment. Supplier names are candidates I still have to verify, and none of them has reviewed this page. No supplier quote was used, so every cost input is a placeholder.</p>
+</section>
+
+<div class="nav">
+  <button class="btn" id="back">Back</button>
+  <button class="btn primary" id="next">Next</button>
+</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var WK = 52/12;
+
+var STEPS = ["What we need","Engineering choices","Choose a route","Schedule","Cost and risk","Recommendation"];
+
+var FIBRES = {
+  T300: {name:"T300", cls:"Standard modulus", E:230, s:3.53, rho:1.76, rhoNote:"datasheet", costMult:1.0, leadAdd:0, suppliers:"Many"},
+  T800H:{name:"T800H", cls:"Intermediate modulus", E:294, s:5.49, rho:1.81, rhoNote:"typical, confirm", costMult:1.5, leadAdd:2, suppliers:"Several"},
+  M40J: {name:"M40J", cls:"High modulus", E:377, s:4.40, rho:1.77, rhoNote:"typical, confirm", costMult:2.5, leadAdd:4, suppliers:"Few"},
+  M55J: {name:"M55J", cls:"High modulus", E:540, s:4.02, rho:1.91, rhoNote:"datasheet", costMult:3.5, leadAdd:6, suppliers:"Few"}
+};
+
+var ROUTES = [
+  {id:"tki", name:"Finished panels, Indian supplier", short:"India, finished", prose:"buying finished panels from an Indian supplier", color:"var(--r1)",
+   desc:"An Indian specialist makes and tests the panels and hands them over ready to bolt on. We set the requirements and check their work."},
+  {id:"intl", name:"Finished panels, international supplier", short:"International", prose:"buying finished panels from an international supplier", color:"var(--r2)",
+   desc:"A European or US specialist does the same. It already has the fibre, so the licence is for the finished panels and can run while they are built."},
+  {id:"fi", name:"We buy materials, fabricator builds", short:"Our materials", prose:"buying the materials ourselves for a fabricator", color:"var(--r3)",
+   desc:"We buy the materials and get the licence ourselves. A contract shop turns them into panels."},
+  {id:"chain", name:"We build the chain", short:"In-house", prose:"building the chain in-house", color:"var(--r4)",
+   desc:"We buy each ingredient separately and make and test the panels in our own shop."}
+];
+
+var OWNERS = [
+  ["Buying materials and the licence", "Supplier", "Supplier", "Us", "Us"],
+  ["Making the panels", "Supplier", "Supplier", "Fabricator", "Us, with a laminate vendor"],
+  ["Proving the process on test samples", "Supplier, we watch", "Supplier, we watch", "Fabricator, we watch", "Us"],
+  ["Testing that the panel design survives launch", "Supplier, we watch", "Supplier, we watch", "Us", "Us"],
+  ["Who pays if a panel fails", "Supplier", "Supplier", "Shared, per contract", "Us"],
+  ["What our team does", "Set requirements, check and accept", "Set requirements, check and import", "Buy materials, set requirements, test", "Everything"]
+];
+
+/* where: step container id. routes: only shown for these routes. */
+var PARAMS = [
+  {id:"sats", where:"c1", label:"Satellites in the constellation", min:1, max:30, step:1, def:10, unit:"", hint:"The company has said it wants 10 by 2030."},
+  {id:"panelsPerSat", where:"c1", label:"Panels per satellite", min:4, max:12, step:1, def:7, unit:"", hint:"The brief says 6 to 8."},
+  {id:"devSets", where:"c1", label:"Development panel sets", min:0, max:4, step:1, def:3, unit:"", hint:"Structural, engineering and qualification models."},
+  {id:"spares", where:"c1", label:"Flight spares", min:0, max:30, step:1, def:10, unit:"%", ph:true},
+  {id:"deadlineMonths", where:"c1", label:"Flight panels needed at month", min:6, max:14, step:0.5, def:10, unit:"", hint:"The brief says about 10 months."},
+
+  {id:"fibre", where:"none", def:"M55J"},
+  {id:"flatness", where:"c2", label:"Flatness tolerance", type:"select", def:"tight", opts:[["normal","Normal"],["tight","Tight"],["vtight","Very tight"]], hint:"Tighter tolerance adds build time and scrap."},
+  {id:"qualApproach", where:"c2", label:"Qualification approach", type:"select", def:"qm", opts:[["qm","Separate qualification model"],["pf","Protoflight on flight units"]], hint:"The rideshare guide allows protoqualification of each flight unit."},
+  {id:"endUse", where:"c2", label:"End use declared on licences", type:"select", def:"dual", opts:[["civil","Civil only"],["dual","Dual use, defence customers"]], hint:"Defence users have been reported, which can add review time."},
+  {id:"area", where:"c2", label:"Average panel area", min:0.05, max:0.6, step:0.01, def:0.25, unit:" m²", ph:true, hint:"The largest panel is 0.35 m²."},
+  {id:"inserts", where:"c2", label:"Inserts per panel", min:5, max:150, step:1, def:40, unit:"", ph:true},
+
+  {id:"supply", where:"c3s", label:"How many suppliers", type:"select", def:"standby", opts:[["one","One supplier, no backup"],["standby","One supplier, backup on standby"],["two","Two suppliers sharing the work"]], hint:"A standby backup is audited and has a price agreed, but only builds if we call on it."},
+  {id:"standbyDelay", where:"c3s", label:"Extra time to switch on the backup", min:2, max:20, step:1, def:8, unit:" wk", ph:true, hint:"Weeks a standby supplier needs after we call on it, on top of its normal build time."},
+  {id:"standbyFee", where:"c3s", label:"Standby fee", min:0, max:50, step:1, def:10, unit:" L", ph:true, hint:"What we pay to hold the backup's price and production slot."},
+  {id:"backupAudit", where:"c3s", label:"Proving the backup", min:0, max:40, step:1, def:8, unit:" L", ph:true, hint:"An audit visit and one first panel, so the backup is proven before we need it."},
+  {id:"secondShare", where:"c3s", label:"Share of panels from the second supplier", min:10, max:50, step:5, def:30, unit:"%", ph:true, hint:"Enough work to keep the second supplier in practice and qualified."},
+  {id:"preBuy", where:"c4m", type:"toggle", def:true, label:"Pre-buy long-lead materials against a bounding spec, under a letter of intent", hint:"Starts the licence and material order before award and before design freeze."},
+  {id:"overlap", where:"c4m", type:"toggle", def:true, label:"Start the flight set build while qualification runs, at risk", hint:"If qualification fails, the flight set may need rework."},
+  {id:"smEarly", where:"c4m", type:"toggle", def:true, label:"Build structural model panels from non-flight materials", hint:"Gets mass and stiffness hardware to the structures team early."},
+  {id:"stock", where:"c4m", type:"toggle", def:false, label:"The supplier already holds qualified flight material for the first set", hint:"A question for the RFI. Applies to the two finished-panel routes."},
+
+  {id:"rfqAward", where:"c4d", label:"RFQ to award", min:2, max:12, step:1, def:4, unit:" wk", ph:true},
+  {id:"designFreeze", where:"c4d", label:"Design freeze at", min:0, max:30, step:1, def:10, unit:" wk", ph:true},
+  {id:"licenceStart", where:"c4d", label:"Material licence filed at", min:0, max:12, step:1, def:0, unit:" wk", routes:["tki","fi","chain"]},
+  {id:"licenceWeeks", where:"c4d", label:"Licence processing time", min:2, max:30, step:1, def:8, unit:" wk", ph:true},
+  {id:"dualUseAdder", where:"c4d", label:"Extra review for dual use", min:0, max:12, step:1, def:4, unit:" wk", ph:true},
+  {id:"prepregLead", where:"c4d", label:"Prepreg lead time, standard fibre", min:2, max:30, step:1, def:8, unit:" wk", ph:true, hint:"Higher-modulus fibres add weeks on top."},
+  {id:"coreLead", where:"c4d", label:"Honeycomb core lead time", min:2, max:20, step:1, def:6, unit:" wk", ph:true},
+  {id:"smFab", where:"c4d", label:"Structural model panel build", min:2, max:16, step:1, def:6, unit:" wk", ph:true},
+  {id:"fabSet", where:"c4d", label:"Build time per panel set", min:3, max:16, step:1, def:6, unit:" wk", ph:true},
+  {id:"testWait", where:"c4d", label:"Wait for a test facility slot", min:0, max:16, step:1, def:3, unit:" wk", ph:true},
+  {id:"qualTest", where:"c4d", label:"Qualification test campaign", min:2, max:12, step:1, def:4, unit:" wk", ph:true},
+  {id:"accept", where:"c4d", label:"Acceptance and insert proof-load", min:1, max:6, step:1, def:2, unit:" wk", ph:true},
+  {id:"intlShip", where:"c4d", label:"Shipping and customs", min:1, max:8, step:1, def:3, unit:" wk", ph:true, routes:["intl"]},
+  {id:"fabProcessQual", where:"c4d", label:"Fabricator process qualification", min:2, max:12, step:1, def:4, unit:" wk", ph:true, routes:["fi"]},
+  {id:"chainSetup", where:"c4d", label:"In-house bonding line setup", min:4, max:30, step:1, def:16, unit:" wk", ph:true, routes:["chain"]},
+  {id:"chainProcessQual", where:"c4d", label:"In-house process qualification", min:4, max:16, step:1, def:8, unit:" wk", ph:true, routes:["chain"], hint:"Laminate, sandwich and insert coupons."},
+  {id:"chainLearning", where:"c4d", label:"First-build slowdown in-house", min:1, max:2, step:0.05, def:1.25, unit:"×", ph:true, routes:["chain"]},
+
+  {id:"matCostM2", where:"c5", label:"Materials per m², standard fibre", min:0.2, max:5, step:0.1, def:1.0, unit:" L", ph:true, hint:"Prepreg, core, adhesive and potting, with waste."},
+  {id:"labourHrs", where:"c5", label:"Labour hours per panel", min:10, max:200, step:5, def:60, unit:" h", ph:true},
+  {id:"labourRate", where:"c5", label:"Labour rate", min:1000, max:8000, step:100, def:2500, unit:" ₹/h", ph:true},
+  {id:"insertCost", where:"c5", label:"Per insert, installed and proof-loaded", min:500, max:10000, step:100, def:2000, unit:" ₹", ph:true},
+  {id:"margin", where:"c5", label:"Supplier margin", min:0, max:80, step:1, def:35, unit:"%", ph:true},
+  {id:"intlMult", where:"c5", label:"International price multiple", min:1, max:4, step:0.1, def:2.0, unit:"×", ph:true},
+  {id:"freightDuty", where:"c5", label:"Freight and import duty", min:0, max:40, step:1, def:15, unit:"%", ph:true},
+  {id:"smFactor", where:"c5", label:"Structural model panel cost vs flight", min:0.2, max:1, step:0.05, def:0.5, unit:"×", ph:true},
+  {id:"qualCost", where:"c5", label:"Qualification test campaign", min:0, max:100, step:1, def:20, unit:" L", ph:true},
+  {id:"processQualCost", where:"c5", label:"Coupon and process qualification", min:0, max:60, step:1, def:15, unit:" L", ph:true},
+  {id:"nreTk", where:"c5", label:"One-time cost, Indian supplier", min:0, max:200, step:5, def:30, unit:" L", ph:true},
+  {id:"nreIntl", where:"c5", label:"One-time cost, international supplier", min:0, max:300, step:5, def:60, unit:" L", ph:true},
+  {id:"nreFi", where:"c5", label:"One-time cost, our materials route", min:0, max:200, step:5, def:25, unit:" L", ph:true},
+  {id:"nreChain", where:"c5", label:"One-time cost, building in-house", min:0, max:400, step:5, def:80, unit:" L", ph:true},
+  {id:"teamSize", where:"c5", label:"In-house team size", min:0, max:8, step:1, def:3, unit:"", ph:true},
+  {id:"teamMonthly", where:"c5", label:"Cost per person per month", min:0.5, max:5, step:0.1, def:1.5, unit:" L", ph:true},
+  {id:"chainOverhead", where:"c5", label:"In-house overhead on unit cost", min:0, max:50, step:1, def:15, unit:"%", ph:true},
+  {id:"years", where:"c5", label:"Programme length", min:1, max:6, step:1, def:4, unit:" years"}
+];
+
+var HINTS = {
+  sats:"How many satellites need panels. The company has said 10 by 2030.",
+  panelsPerSat:"The flat boards that form the satellite's body and carry its equipment. The brief says 6 to 8.",
+  devSets:"Practice sets built before the flight ones, usually three. The glossary below explains each.",
+  spares:"Extra flight panels in case one is damaged or rejected.",
+  deadlineMonths:"When the satellite team needs flight panels to start assembly. The brief says about 10 months.",
+  flatness:"How flat a panel must be so equipment sits true. Tighter means slower builds and more rejects.",
+  qualApproach:"Prove the design on a separate test set, or test the flight panels themselves (protoflight). Protoflight saves a set but puts flight hardware at risk.",
+  endUse:"What we tell export authorities the panels are for. Defence use can mean a longer review.",
+  area:"Average size of one panel. The largest, 700 by 500 mm, is 0.35 m².",
+  inserts:"Threaded metal bushes glued into the panel so equipment can be bolted on.",
+  preBuy:"Order the slowest materials before the design is final, backed by a letter of intent (a written promise to buy).",
+  overlap:"Begin building flight panels before test results are in. It saves weeks, but if the tests fail those panels may need rework.",
+  smEarly:"Make the first fit-and-weight panels from cheaper material that needs no licence, so they arrive sooner.",
+  stock:"If the supplier already has approved material on the shelf, the first set skips the licence and the wait. Worth asking in the RFI.",
+  rfqAward:"Time to ask suppliers for quotes, compare them and sign a contract.",
+  designFreeze:"When engineering stops changing the drawings. Flight panels cannot be built before this.",
+  licenceStart:"The week we apply for permission to import controlled carbon fibre.",
+  licenceWeeks:"How long the exporting country takes to approve the licence.",
+  dualUseAdder:"Extra review because the satellite also serves defence customers.",
+  prepregLead:"The wait for prepreg, carbon cloth already soaked in resin. Stiffer fibres add weeks on top.",
+  coreLead:"The wait for the aluminium honeycomb that forms the panel's light middle layer.",
+  smFab:"Time to build the first fit-and-weight panels.",
+  fabSet:"Time to build one full set of panels for a satellite.",
+  testWait:"Test labs are shared and booked ahead. This is the queue.",
+  qualTest:"Shaking, shock and hot-cold vacuum tests that show the panels survive launch and orbit.",
+  accept:"Final checks on each flight set, including pulling on every insert to prove it holds.",
+  intlShip:"Freight from abroad plus Indian customs clearance.",
+  fabProcessQual:"Test samples the fabricator makes to prove its process works with our materials.",
+  chainSetup:"Time to set up our own clean room, tools and oven for bonding panels.",
+  chainProcessQual:"Our own test samples showing we can make, bond and fit inserts reliably.",
+  chainLearning:"A new shop is slow at first. 1.25× means the first builds take 25% longer.",
+  matCostM2:"Raw materials for one square metre of panel, before the premium for stiffer fibre.",
+  labourHrs:"Skilled hours to lay up, cure, bond, machine and inspect one panel.",
+  labourRate:"Hourly cost of that skilled work.",
+  insertCost:"Cost to fit one insert, pull-test it and record the result.",
+  margin:"The supplier's markup on its own cost.",
+  intlMult:"How much more a foreign house charges than an Indian one for the same panel.",
+  freightDuty:"Shipping plus Indian import duty, as a share of the price.",
+  smFactor:"Fit-and-weight panels use cheaper material, so they cost a fraction of a flight panel.",
+  qualCost:"Lab time, fixtures and reports needed to prove the design.",
+  processQualCost:"Making and testing sample pieces to prove a process works.",
+  nreTk:"One-off cost before the first panel: moulds, tools and process setup.",
+  nreIntl:"The same one-off setup cost at a foreign supplier.",
+  nreFi:"Setup cost at a fabricator that works with our materials.",
+  nreChain:"Our own clean room, tools, oven and inspection equipment.",
+  teamSize:"People we would hire to run our own panel shop.",
+  teamMonthly:"Salary and overhead for one person for one month.",
+  chainOverhead:"Running costs of our own shop, spread over each panel.",
+  years:"How long the constellation build runs."
+};
+var LABELS = {devSets:"Test panel sets before flight", deadlineMonths:"Flight panels needed by month", smFab:"Build the fit-and-weight panels", chainLearning:"Slowdown while our shop learns", insertCost:"Cost per insert, fitted and tested", matCostM2:"Materials per m² of panel"};
+PARAMS.forEach(function(p){ if(HINTS[p.id]) p.hint = HINTS[p.id]; if(LABELS[p.id]) p.label = LABELS[p.id]; });
+var PBYID = {}; PARAMS.forEach(function(p){ PBYID[p.id] = p; });
+
+var STRESS = [
+  {id:"lic", label:"Licence takes 20 weeks", key:"licenceWeeks", val:20},
+  {id:"freeze", label:"Design freeze slips to week 18", key:"designFreeze", val:18},
+  {id:"test", label:"Test facility booked for 10 weeks", key:"testWait", val:10},
+  {id:"prepreg", label:"Prepreg lead time of 16 weeks", key:"prepregLead", val:16},
+  {id:"fab", label:"Each panel set takes 9 weeks to build", key:"fabSet", val:9}
+];
+
+var SHORT = {rfqAward:"RFQ to award", designFreeze:"the design freeze date", licenceWeeks:"licence processing time", prepregLead:"prepreg lead time", coreLead:"core lead time", smFab:"structural model build time", fabSet:"build time per panel set", testWait:"the wait for a test slot", qualTest:"the qualification campaign", accept:"acceptance time", intlShip:"shipping and customs", fabProcessQual:"fabricator process qualification", chainSetup:"bonding line setup", chainProcessQual:"in-house process qualification"};
+var RFI = {
+  licenceWeeks:"licence timing (and whether they hold licensed stock)",
+  prepregLead:"prepreg lead time for the chosen fibre",
+  coreLead:"honeycomb core lead time",
+  fabSet:"build time per panel set",
+  testWait:"test facility availability",
+  qualTest:"the length of the qualification campaign",
+  accept:"acceptance and proof-load time per set",
+  designFreeze:"a firm design freeze date from engineering",
+  rfqAward:"how quickly they can quote and sign",
+  smFab:"structural model build time",
+  intlShip:"shipping and customs time",
+  fabProcessQual:"how long their process qualification takes",
+  chainSetup:"what it takes to stand up a bonding line",
+  chainProcessQual:"how long in-house coupon qualification would take"
+};
+
+var GATES = [
+  {id:"identified", name:"Identified", means:"Found through public sources. Nothing confirmed with the supplier yet."},
+  {id:"rfi", name:"RFI sent", means:"We have asked about heritage, capacity, lead time, export status and a budget price."},
+  {id:"reply", name:"Reply received", means:"They have answered, so the scores can be filled in."},
+  {id:"audit", name:"Audit passed", means:"We visited and checked their quality system, process control and material records."},
+  {id:"fa", name:"First panel passed", means:"Their first panel and its test samples met our drawings and tests."},
+  {id:"approved", name:"Approved for flight", means:"Qualification passed, so they can build flight panels."}
+];
+var GIDX = {}; GATES.forEach(function(g, i){ GIDX[g.id] = i; });
+var CRITS = [
+  {id:"her", name:"Flight heritage", w:25, help:"Panels they have made that have flown, and for whom."},
+  {id:"qms", name:"Quality system", w:25, help:"AS9100 or similar, and how they control changes to a qualified process."},
+  {id:"cap", name:"Capacity and lead time", w:20, help:"How many panel sets a month they can make, and how soon they can start."},
+  {id:"exp", name:"Export exposure", w:15, help:"How much of their supply needs licences, and who files them."},
+  {id:"com", name:"Price and terms", w:15, help:"Unit price, one-off costs, and whether they accept our contract terms."}
+];
+var VENDORS = {
+  ananth:{name:"Ananth Technologies", place:"Bengaluru", url:"https://ananthtech.com/products/space/solar-panels", found:"Makes aluminium honeycomb panels with carbon skins, up to 1.5 by 2.5 m, for satellite solar arrays. Has worked on 99 ISRO satellites.", ask:"Do they make structural panels with inserts, not only solar array panels?"},
+  tasl:{name:"Tata Advanced Systems", place:"India", url:"https://www.tataadvancedsystems.com/satellite-integration", found:"Built and launched an Earth observation satellite with Satellogic.", ask:"Do they make structural panels themselves or buy them in?"},
+  kineco:{name:"Kineco", place:"Goa", url:"https://www.compositesworld.com/news/kineco-kaman-earns-isro-contract-for-indias-first-human-space-flight-mission", found:"Makes composite structures for ISRO launch vehicles.", ask:"Have they built satellite panels, or only launcher parts?"},
+  bg:{name:"Beyond Gravity", place:"Zurich and Titusville", url:"https://spacenews.com/how-to-rapidly-produce-high-volume-satellite-structures/", found:"Made the structure panels for all 650 OneWeb satellites and pull-tests every insert with a recorded force curve.", ask:"Which site would build ours? The US site brings US export rules."},
+  ss:{name:"Space Structures GmbH", place:"Berlin", url:"https://spacestructures.com/products/honeycomb-sandwich-panels", found:"Makes carbon or aluminium skin panels on aluminium honeycomb, with inserts in aluminium, titanium or Invar.", ask:"Lead time, and how many panel sets a month they can make."},
+  acp:{name:"ACP Composites", place:"United States", url:"https://acpcomposites.com/shop/sandwich-panels/aluminum-core-panels/aluminum-carbon-fiber-sandwich-panel", found:"Sells low-outgassing carbon and aluminium honeycomb panels and accepts materials supplied by the customer.", ask:"Their catalogue skins use standard-modulus fibre. Can they work with our prepreg?"},
+  toray:{name:"Toray", place:"Japan, US and France", url:"https://www.toraycma.com/products/carbon-fiber/", found:"Makes the T300, T800H, M40J and M55J fibres used in this model.", ask:"Prepreg lead time and the licence route to India for the chosen fibre."},
+  hexcel:{name:"Hexcel", place:"US and Europe", url:"https://acpcomposites.com/shop/sandwich-panels/aluminum-core-panels/aluminum-carbon-fiber-sandwich-panel", found:"Its HexWeb CR III aluminium honeycomb is used in space panels, as named on ACP's panel page.", ask:"Lead time for the chosen cell size and density."},
+  euro:{name:"Euro-Composites", place:"Luxembourg", url:"https://www.euro-composites.com/en/aluminium-wabe/", found:"Makes aluminium honeycomb from 29 kg/m³ in a range of cell sizes.", ask:"Lead time, and whether they supply perforated core."},
+  nsil:{name:"NSIL (ISRO test facilities)", place:"Bengaluru", url:"https://www.nsilindia.co.in/testing-service", found:"Sells time on ISRO's vibration, acoustic and thermal-vacuum test facilities.", ask:"How far ahead test slots have to be booked."}
+};
+var ROUTE_VENDORS = {
+  tki:[{title:"", ids:["ananth","tasl","kineco"]}],
+  intl:[{title:"", ids:["bg","ss","acp"]}],
+  fi:[{title:"Fabricators", ids:["acp","ananth","kineco"]}, {title:"Materials we would buy", ids:["toray","hexcel","euro"]}]
+};
+var STAGES = [
+  {id:"st_fibre", stage:"Carbon fibre", ids:["toray"], q:"A certificate of conformance and lot traceability for every spool."},
+  {id:"st_prepreg", stage:"Prepreg, fibre soaked in resin", ids:[], q:"Batch test data, frozen storage records, and outgassing below the NASA limits."},
+  {id:"st_lam", stage:"Face-sheet laminates", ids:[], q:"Ply count checked, thickness and voids within limits, and a clean ultrasonic scan."},
+  {id:"st_coupon", stage:"Coupon testing", ids:[], q:"Tension, compression and shear results within the design values, from an accredited lab."},
+  {id:"st_core", stage:"Honeycomb core", ids:["hexcel","euro"], q:"Density and cell size certified, and perforated so trapped air can escape in vacuum."},
+  {id:"st_bond", stage:"Bonding the sandwich and potting inserts", ids:[], q:"Flatwise tension and peel samples pass, and sample inserts hold the safe load."},
+  {id:"st_panelq", stage:"Panel qualification", ids:["nsil"], q:"Vibration, shock and thermal-vacuum tests passed at qualification levels."}
+];
+function backupOf(r){ return r === "tki" ? "intl" : "tki"; }
+var BACKUP_NAME = {tki:"an Indian supplier", intl:"an international supplier"};
+
+var DEF = {};
+PARAMS.forEach(function(p){ DEF[p.id] = p.def; });
+Object.keys(FIBRES).forEach(function(k){ DEF["rho_"+k] = FIBRES[k].rho; });
+Object.keys(VENDORS).forEach(function(v){ DEF["g_" + v] = "identified"; CRITS.forEach(function(c){ DEF["s_" + v + "_" + c.id] = 0; }); });
+STAGES.forEach(function(st){ DEF["g_" + st.id] = "identified"; });
+var P = {}, selected = "tki", step = 1, seen = {1:true}, stressPrev = {};
+function clone(o){ var r = {}; for(var k in o) r[k] = o[k]; return r; }
+
+/* ---------- URL state ---------- */
+function readHash(){
+  P = clone(DEF);
+  var h = location.hash.replace(/^#/, "");
+  if(!h) return;
+  h.split("&").forEach(function(kv){
+    var a = kv.split("="), k = decodeURIComponent(a[0]), v = decodeURIComponent(a[1] || "");
+    if(k === "route"){ if(ROUTES.some(function(r){ return r.id === v; })) selected = v; return; }
+    if(k === "step"){ var n = parseInt(v, 10); if(n >= 1 && n <= 6){ step = n; for(var i = 1; i <= n; i++) seen[i] = true; } return; }
+    if(!(k in DEF)) return;
+    var d = DEF[k];
+    if(typeof d === "boolean") P[k] = (v === "1");
+    else if(typeof d === "number"){ var x = parseFloat(v); if(!isNaN(x)) P[k] = x; }
+    else if(k === "fibre"){ if(FIBRES[v]) P[k] = v; }
+    else if(k.indexOf("g_") === 0){ if(v in GIDX) P[k] = v; }
+    else { var p = PBYID[k]; if(p && p.opts && p.opts.some(function(o){ return o[0] === v; })) P[k] = v; }
+  });
+}
+function writeHash(){
+  var parts = [];
+  Object.keys(DEF).forEach(function(k){
+    if(P[k] !== DEF[k]) parts.push(encodeURIComponent(k) + "=" + encodeURIComponent(typeof P[k] === "boolean" ? (P[k] ? "1" : "0") : String(P[k])));
+  });
+  if(selected !== "tki") parts.push("route=" + selected);
+  if(step !== 1) parts.push("step=" + step);
+  try{ history.replaceState(null, "", parts.length ? "#" + parts.join("&") : location.pathname + location.search); }catch(e){}
+}
+
+/* ---------- schedule engine ---------- */
+function derived(p){
+  var f = FIBRES[p.fibre];
+  return {
+    fibre:f,
+    lic: p.licenceWeeks + (p.endUse === "dual" ? p.dualUseAdder : 0),
+    prepreg: p.prepregLead + f.leadAdd,
+    fab: p.fabSet + {normal:0, tight:1, vtight:2}[p.flatness],
+    hasEM: p.devSets >= 2,
+    pf: p.qualApproach === "pf" || p.devSets < 2
+  };
+}
+function T(id, name, dur, deps, at, kind){ return {id:id, name:name, dur:Math.max(0, dur), deps:deps || [], at:at || 0, kind:kind || "main"}; }
+
+function tail(p, d, fab, buildDeps){
+  var t = [];
+  if(!d.hasEM){
+    t.push(T("flight", "Flight set build", fab, buildDeps));
+    t.push(T("wait", "Wait for test slot", p.testWait, ["flight"]));
+    t.push(T("qual", "Protoflight tests on flight units", p.qualTest, ["wait"]));
+    t.push(T("acc", "Acceptance and insert proof-load", p.accept, ["qual"]));
+    return t;
+  }
+  if(d.pf){
+    t.push(T("em", "Engineering model build", fab, buildDeps));
+    t.push(T("flight", "Flight set build", fab, p.overlap ? buildDeps : ["em"]));
+    t.push(T("wait", "Wait for test slot", p.testWait, ["flight"]));
+    t.push(T("qual", "Protoflight tests on flight units", p.qualTest, ["wait"]));
+    t.push(T("acc", "Acceptance and insert proof-load", p.accept, ["qual"]));
+  } else {
+    var qm = p.devSets >= 3;
+    t.push(T("em", qm ? "Engineering and qualification model build" : "Engineering model build", fab, buildDeps));
+    t.push(T("wait", "Wait for test slot", p.testWait, ["em"]));
+    t.push(T("qual", qm ? "Qualification tests" : "Qualification tests on the engineering model", p.qualTest, ["wait"]));
+    t.push(T("flight", "Flight set build", fab, p.overlap ? ["em"] : ["qual"]));
+    t.push(T("acc", "Acceptance and insert proof-load", p.accept, ["flight","qual"]));
+  }
+  return t;
+}
+
+function buildRoute(route, p){
+  var d = derived(p), t = [], matDur = Math.max(d.prepreg, p.coreLead);
+  var hasSM = p.devSets > 0;
+  if(route === "tki" || route === "intl"){
+    t.push(T("award", "RFQ and award", p.rfqAward, []));
+    t.push(T("freeze", "Design freeze", 0, [], p.designFreeze, "ms"));
+    if(p.stock) t.push(T("mat", "Flight material from supplier stock", 2, ["award"]));
+    else if(route === "tki"){
+      t.push(T("lic", "Material import licence", d.lic, p.preBuy ? [] : ["award"], p.licenceStart));
+      t.push(T("mat", "Prepreg and core lead time", matDur, p.preBuy ? ["lic"] : ["lic","award"]));
+    } else t.push(T("mat", "Supplier material lead time", matDur, p.preBuy ? [] : ["award"]));
+    if(hasSM) t.push(T("sm", "Structural model panels", p.smFab, p.smEarly ? ["award"] : ["mat"], 0, "dev"));
+    t = t.concat(tail(p, d, d.fab, ["mat","freeze","award"]));
+    if(route === "intl"){
+      t.push(T("plic", "Export licence for finished panels", d.lic, ["award"]));
+      t.push(T("ship", "Shipping and customs", p.intlShip, ["acc","plic"]));
+      t.push(T("deliver", "Flight panels at integration", 0, ["ship"], 0, "ms"));
+    } else t.push(T("deliver", "Flight panels at integration", 0, ["acc"], 0, "ms"));
+  }
+  if(route === "fi"){
+    t.push(T("lic", "Material import licence, in our name", d.lic, [], p.licenceStart));
+    t.push(T("mat", "Prepreg and core lead time", matDur, ["lic"]));
+    t.push(T("award", "Fabricator RFQ and award", p.rfqAward, []));
+    t.push(T("freeze", "Design freeze", 0, [], p.designFreeze, "ms"));
+    t.push(T("fpq", "Fabricator process qualification", p.fabProcessQual, ["award","mat"]));
+    if(hasSM) t.push(T("sm", "Structural model panels", p.smFab, p.smEarly ? ["award"] : ["mat"], 0, "dev"));
+    t = t.concat(tail(p, d, d.fab, ["fpq","freeze"]));
+    t.push(T("deliver", "Flight panels at integration", 0, ["acc"], 0, "ms"));
+  }
+  if(route === "chain"){
+    t.push(T("setup", "In-house bonding line setup", p.chainSetup, []));
+    t.push(T("lic", "Fibre and prepreg import licence", d.lic, [], p.licenceStart));
+    t.push(T("mat", "Prepreg lead time from converter", d.prepreg, ["lic"]));
+    t.push(T("award", "Laminate and core vendor award", p.rfqAward, []));
+    t.push(T("core", "Honeycomb core lead time", p.coreLead, ["award"]));
+    t.push(T("freeze", "Design freeze", 0, [], p.designFreeze, "ms"));
+    t.push(T("pq", "Process qualification with coupons", p.chainProcessQual, ["setup","mat","core"]));
+    if(hasSM) t.push(T("sm", "Structural model panels", p.smFab, p.smEarly ? ["setup"] : ["pq"], 0, "dev"));
+    t = t.concat(tail(p, d, d.fab * p.chainLearning, ["pq","freeze"]));
+    t.push(T("deliver", "Flight panels at integration", 0, ["acc"], 0, "ms"));
+  }
+  return cpm(t);
+}
+
+/* forward and backward pass; ties on the critical path are all marked */
+function cpm(tasks){
+  var by = {}, order = [], done = {};
+  tasks.forEach(function(t){ by[t.id] = t; });
+  for(var g = 0; g < 60 && order.length < tasks.length; g++){
+    tasks.forEach(function(t){
+      if(done[t.id] || !t.deps.every(function(id){ return done[id]; })) return;
+      var s = t.at;
+      t.deps.forEach(function(id){ if(by[id].end > s) s = by[id].end; });
+      t.start = s; t.end = s + t.dur; done[t.id] = true; order.push(t);
+    });
+  }
+  var fin = by.deliver.end;
+  for(var i = order.length - 1; i >= 0; i--){
+    var t = order[i];
+    if(t.id === "deliver"){ t.lf = t.end; }
+    else {
+      var lf = Infinity;
+      tasks.forEach(function(u){ if(u.deps.indexOf(t.id) >= 0 && isFinite(u.lf)) lf = Math.min(lf, u.lf - u.dur); });
+      t.lf = lf;
+    }
+    t.crit = isFinite(t.lf) && Math.abs(t.lf - t.end) < 1e-6;
+  }
+  return {tasks:order, by:by, deliver:fin, sm: by.sm ? by.sm.end : null};
+}
+
+/* ---------- cost ---------- */
+function devSetsBuilt(p){ return Math.max(0, p.devSets - (p.qualApproach === "pf" && p.devSets >= 3 ? 1 : 0)); }
+function costs(route, p){
+  var f = FIBRES[p.fibre];
+  var mat = p.area * p.matCostM2 * f.costMult, lab = p.labourHrs * p.labourRate / 1e5, ins = p.inserts * p.insertCost / 1e5;
+  var base = mat + lab + ins, m = 1 + p.margin / 100;
+  var scrap = {tki:5, intl:4, fi:8, chain:15}[route] + {normal:0, tight:4, vtight:8}[p.flatness];
+  var unit, nre, fixed = 0, qual = p.qualCost;
+  if(route === "tki"){ unit = base * m; nre = p.nreTk; }
+  if(route === "intl"){ unit = base * m * p.intlMult * (1 + p.freightDuty / 100); nre = p.nreIntl; }
+  if(route === "fi"){ unit = mat * 1.10 + (lab + ins) * m; nre = p.nreFi; qual += p.processQualCost * 0.5; }
+  if(route === "chain"){ unit = base * (1 + p.chainOverhead / 100); nre = p.nreChain; fixed = p.teamSize * p.teamMonthly * 12 * p.years; qual += p.processQualCost; }
+  unit = unit / (1 - scrap / 100);
+  var ds = devSetsBuilt(p), dev = ds > 0 ? p.panelsPerSat * unit * p.smFactor + (ds - 1) * p.panelsPerSat * unit : 0;
+  var perSat = p.panelsPerSat * (1 + p.spares / 100) * unit, start = nre + fixed + qual + dev;
+  return {unit:unit, perSat:perSat, start:start, total:start + p.sats * perSat};
+}
+
+function nreOf(r, p){ return {tki:p.nreTk, intl:p.nreIntl, fi:p.nreFi, chain:p.nreChain}[r]; }
+function withSupply(rid, base, p){
+  var c = clone(base[rid]), b = base[backupOf(rid)];
+  c.extra = 0;
+  if(p.supply === "standby"){ c.extra = p.standbyFee + p.backupAudit; }
+  if(p.supply === "two"){
+    var sh = p.secondShare / 100;
+    c.extra = nreOf(backupOf(rid), p) + p.qualCost;
+    c.perSat = (1 - sh) * c.perSat + sh * b.perSat;
+    c.unit = (1 - sh) * c.unit + sh * b.unit;
+  }
+  c.start += c.extra;
+  c.total = c.start + p.sats * c.perSat;
+  return c;
+}
+
+/* ---------- risk ---------- */
+function clamp(x){ return Math.max(1, Math.min(5, Math.round(x))); }
+function risks(route, p, sch, slack){
+  var d = derived(p), f = d.fibre, r = [];
+  var stockHelps = p.stock && (route === "tki" || route === "intl");
+  var bIntl = p.supply !== "one" && backupOf(route) === "intl";
+  r.push({n:"Licence delay", s:clamp(2 + (d.lic >= 12) + (d.lic >= 20) + (f.leadAdd >= 4) - (stockHelps ? 1 : 0) - (bIntl ? 1 : 0)),
+    m:"Apply on day one using a worst-case spec, and describe the end use honestly. Ask every supplier whether it already holds licensed material."});
+  r.push({n:"Single source on fibre or prepreg", s:clamp({Many:2, Several:3, Few:4}[f.suppliers] + (route === "chain" ? 1 : 0)),
+    m:"Test a second prepreg on samples early, and keep enough spare material for one satellite set."});
+  r.push({n:"Panels fail the launch tests", s:clamp({tki:2, intl:1, fi:3, chain:4}[route] + (p.flatness === "vtight") + d.pf),
+    m:d.pf ? "The flight panels themselves are tested, so a failure costs flight hardware. Watch the first panel being made and test sample inserts early." : "Watch the first panel being made and ask for test-sample results on every batch of material. Find the safe insert load before the test set is built."});
+  r.push({n:"Missing the integration date", s: slack < 0 ? 5 : slack < 2 ? 4 : slack < 4 ? 3 : 2,
+    m: slack < 0 ? "The plan is late by " + fmtW(-slack) + ". The chart in step 4 shows which tasks would win the time back." : "The plan has " + fmtW(slack) + " of spare time. Protect it by booking the test lab as soon as the contract is signed."});
+  r.push({n:"We lack the skills in-house", s:{tki:1, intl:1, fi:2, chain:p.chainSetup < 12 ? 5 : 4}[route],
+    m: route === "chain" ? "Hire an experienced bonding lead first and buy know-how from an established maker. Keep an outside supplier on contract as a backup." : "Keep a small team to write requirements, watch key steps and inspect deliveries."});
+  var bname = BACKUP_NAME[backupOf(route)];
+  r.push({n:"No backup if the supplier fails", s:{one:5, standby:3, two:2}[p.supply],
+    m: p.supply === "one" ? "Nothing covers a supplier that goes bust, loses its licence or fails qualification. Put " + bname + " on a standby agreement at least." :
+       p.supply === "standby" ? "The backup is audited and priced but not building. Agree in writing what triggers it, and re-check it once a year." :
+       "Both suppliers are qualified. Keep enough work with the second one that its process stays proven."});
+  r.push({n:"Inserts vary in strength", s:3, m:"Studies show inserts that look the same can hold very different loads, and simple calculations miss this. Test sample inserts to find a safe load, then pull-test every flight insert and keep the record."});
+  if(p.overlap && !d.pf) r.push({n:"Rework if testing fails", s: route === "chain" ? 4 : 3, m:"Building flight panels during testing saves weeks, but a test failure could mean rework. Hold back the final steps until the first test results arrive."});
+  if(route === "intl") r.push({n:"Exchange rate and freight costs", s:3, m:"Fix the price in one currency with a cap on freight, and hire a customs agent before the first shipment."});
+  return r.sort(function(a,b){ return b.s - a.s; });
+}
+
+/* ---------- format ---------- */
+function r1(x){ return Math.round(x * 10) / 10; }
+function fmtW(w){ var r = r1(w); return (r === Math.round(r) ? Math.round(r) : r.toFixed(1)) + (Math.abs(r) === 1 ? " week" : " weeks"); }
+function fmtM(w){ return (w / WK).toFixed(1); }
+function fmtL(x){ return x >= 100 ? "₹" + (x / 100).toFixed(2) + " Cr" : "₹" + x.toFixed(1) + " L"; }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]; }); }
+function cap(t){ return t.charAt(0).toUpperCase() + t.slice(1); }
+function lc(t){ return t.charAt(0).toLowerCase() + t.slice(1); }
+function route(id){ return ROUTES.filter(function(r){ return r.id === id; })[0]; }
+function fmtVal(p, v){
+  if(p.type === "select") return (p.opts.filter(function(o){ return o[0] === v; })[0] || [0, v])[1];
+  var dec = p.step >= 1 ? 0 : (p.step >= 0.1 && Math.round(p.step * 10) === p.step * 10 ? 1 : 2);
+  var s = (p.id === "labourRate" || p.id === "insertCost") ? Number(v).toLocaleString("en-IN") : Number(v).toFixed(dec);
+  return s + (p.unit || "");
+}
+function listJoin(a){ return a.length <= 1 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1]; }
+
+/* ---------- controls ---------- */
+function ctlHTML(p){
+  var ph = p.ph ? '<span class="ph">placeholder</span>' : "";
+  var hint = p.hint ? '<div class="hint" id="h_' + p.id + '">' + esc(p.hint) + '</div>' : '<div class="hint" id="h_' + p.id + '" hidden></div>';
+  if(p.type === "toggle")
+    return '<label class="tog" id="w_' + p.id + '"><input type="checkbox" data-id="' + p.id + '"><span><span id="l_' + p.id + '">' + esc(p.label) + '</span><span class="hint" id="h_' + p.id + '">' + esc(p.hint || "") + '</span></span></label>';
+  if(p.type === "select")
+    return '<div class="ctl" id="w_' + p.id + '"><div class="ctl-head"><label for="c_' + p.id + '">' + esc(p.label) + '</label></div><select id="c_' + p.id + '" data-id="' + p.id + '">' +
+      p.opts.map(function(o){ return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join("") + '</select>' + hint + '</div>';
+  return '<div class="ctl" id="w_' + p.id + '"><div class="ctl-head"><label for="c_' + p.id + '">' + esc(p.label) + ph + '</label><output id="o_' + p.id + '"></output></div>' +
+    '<input type="range" id="c_' + p.id + '" data-id="' + p.id + '" min="' + p.min + '" max="' + p.max + '" step="' + p.step + '">' + hint + '</div>';
+}
+function buildControls(){
+  ["c1","c2","c3s","c4m","c4d","c5"].forEach(function(where){
+    var el = document.getElementById(where);
+    el.innerHTML = PARAMS.filter(function(p){ return p.where === where; }).map(ctlHTML).join("");
+  });
+  document.addEventListener("input", onInput);
+  document.addEventListener("change", onInput);
+}
+function onInput(e){
+  var t = e.target;
+  if(t.dataset && t.dataset.rho){
+    var k = t.dataset.rho, v = parseFloat(t.value);
+    if(!isNaN(v) && v >= 1 && v <= 2.5){ t.classList.remove("bad"); P["rho_" + k] = v; renderExport(); }
+    else t.classList.add("bad");
+    return;
+  }
+  if(t.name === "route"){ selected = t.value; render(); return; }
+  if(t.dataset && t.dataset.gate){ P["g_" + t.dataset.gate] = t.value; render(); return; }
+  if(t.dataset && t.dataset.score){ P["s_" + t.dataset.score] = parseInt(t.value, 10) || 0; render(); return; }
+  var id = t.dataset && t.dataset.id; if(!id) return;
+  var p = PBYID[id];
+  if(p.type === "toggle") P[id] = t.checked;
+  else if(p.type === "select") P[id] = t.value;
+  else P[id] = parseFloat(t.value);
+  render();
+}
+function syncControls(){
+  PARAMS.forEach(function(p){
+    var el = document.querySelector('[data-id="' + p.id + '"]'); if(!el) return;
+    if(p.type === "toggle") el.checked = !!P[p.id];
+    else if(String(el.value) !== String(P[p.id])) el.value = P[p.id];
+    var o = document.getElementById("o_" + p.id); if(o) o.textContent = fmtVal(p, P[p.id]);
+  });
+}
+
+/* show, hide and relabel inputs so every combination reads correctly */
+function applyContext(){
+  var pf = P.qualApproach === "pf";
+  PARAMS.forEach(function(p){
+    var w = document.getElementById("w_" + p.id); if(!w) return;
+    var show = !p.routes || p.routes.indexOf(selected) >= 0;
+    if(p.id === "dualUseAdder") show = P.endUse === "dual";
+    if(p.id === "smEarly" || p.id === "smFab" || p.id === "smFactor") show = P.devSets > 0;
+    if(p.id === "overlap") show = P.devSets >= 2;
+    if(p.id === "standbyDelay" || p.id === "standbyFee" || p.id === "backupAudit") show = P.supply === "standby";
+    if(p.id === "secondShare") show = P.supply === "two";
+    w.hidden = !show;
+    w.classList.remove("dim");
+  });
+  var finished = selected === "tki" || selected === "intl";
+  function dim(id, msg){ var w = document.getElementById("w_" + id), h = document.getElementById("h_" + id); if(!w) return; w.classList.add("dim"); if(h){ h.hidden = false; h.textContent = msg; } }
+  function resetHint(id){ var h = document.getElementById("h_" + id), p = PBYID[id]; if(h){ h.textContent = p.hint || ""; h.hidden = !p.hint; } }
+  ["prepregLead","coreLead","licenceWeeks","licenceStart","preBuy"].forEach(resetHint);
+  if(P.stock && finished){
+    dim("prepregLead", "Not used for the first set while the supplier holds stock.");
+    dim("coreLead", "Not used for the first set while the supplier holds stock.");
+    if(selected === "tki"){
+      dim("licenceWeeks", "Not used for the first set while the supplier holds stock.");
+      dim("licenceStart", "Not used for the first set while the supplier holds stock.");
+    }
+    dim("preBuy", "Has no effect while the supplier holds stock.");
+  }
+  if(selected === "intl"){ var h = document.getElementById("h_licenceWeeks"); if(h && !P.stock){ h.hidden = false; h.textContent = "On this route the licence is for the finished panels, not the fibre."; } }
+  document.getElementById("l_overlap").textContent = pf ? "Build the flight set alongside the engineering model, at risk" : "Start the flight set build while qualification runs, at risk";
+  document.getElementById("h_overlap").textContent = pf ? "The flight panels get tested either way, so this only saves build time." : PBYID.overlap.hint;
+  var qh = document.getElementById("h_qualApproach");
+  if(P.devSets < 2){ qh.textContent = "With fewer than two test sets there is no engineering model, so the flight panels get tested either way."; document.getElementById("w_qualApproach").classList.add("dim"); }
+  else qh.textContent = PBYID.qualApproach.hint;
+  var sh = document.getElementById("h_stock");
+  sh.textContent = finished ? PBYID.stock.hint : "Only matters when a supplier sells us finished panels, so it has no effect on this route.";
+  document.getElementById("w_stock").classList.toggle("dim", !finished);
+}
+
+/* ---------- stepper ---------- */
+function buildSteps(){
+  document.getElementById("steps").innerHTML = STEPS.map(function(s, i){
+    return '<button type="button" data-step="' + (i + 1) + '"><span class="n">' + (i + 1) + '</span><span class="lbl">' + esc(s) + '</span></button>';
+  }).join("");
+  document.getElementById("steps").addEventListener("click", function(e){ var b = e.target.closest("button"); if(b) go(+b.dataset.step); });
+  document.getElementById("back").addEventListener("click", function(){ go(step - 1); });
+  document.getElementById("next").addEventListener("click", function(){ go(step + 1); });
+}
+function go(n){
+  if(n < 1 || n > 6) return;
+  step = n; seen[n] = true;
+  showStep();
+  writeHash();
+  var top = document.getElementById("steps").getBoundingClientRect().top + window.scrollY - 8;
+  if(window.scrollY > top) window.scrollTo(0, top);
+}
+function showStep(){
+  document.querySelectorAll("section.step").forEach(function(s){ s.hidden = +s.dataset.step !== step; });
+  document.querySelectorAll("#steps button").forEach(function(b){
+    var n = +b.dataset.step;
+    if(n === step) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+    b.classList.toggle("seen", !!seen[n]);
+  });
+  document.getElementById("back").style.visibility = step === 1 ? "hidden" : "visible";
+  var nx = document.getElementById("next");
+  nx.style.visibility = step === 6 ? "hidden" : "visible";
+  nx.textContent = step < 6 ? "Next: " + lc(STEPS[step]) : "";
+}
+
+/* ---------- render ---------- */
+var RES = {};
+function render(){
+  var need = P.deadlineMonths * WK;
+  var base = {};
+  ROUTES.forEach(function(r){ base[r.id] = costs(r.id, P); });
+  ROUTES.forEach(function(r){
+    var s = buildRoute(r.id, P), slack = need - s.deliver;
+    RES[r.id] = {sch:s, slack:slack, cost:withSupply(r.id, base, P), risks:risks(r.id, P, s, slack)};
+  });
+  syncControls(); applyContext();
+  renderStatus(); renderDemand(); renderFibres(); renderExport(); renderRoutes(); renderOwners();
+  renderSupply(); renderVendors(); renderTerms();
+  renderChips(); renderGantt(need); renderSens(); renderCost(); renderRisks(); renderSummary();
+  writeHash();
+}
+
+function renderStatus(){
+  var R = RES[selected], late = R.slack < 0, el = document.getElementById("status");
+  el.className = "status" + (late ? " late" : "");
+  var sup = {one:"no backup", standby:"backup on standby", two:"two suppliers"}[P.supply];
+  el.innerHTML = '<span class="st-route">' + esc(route(selected).name) + ', ' + sup + '</span>' +
+    '<span>Flight panels in <b>month ' + fmtM(R.sch.deliver) + '</b></span>' +
+    '<span class="st-flag">' + (late ? fmtW(-R.slack) + " late" : fmtW(R.slack) + " to spare") + '</span>' +
+    '<span>' + fmtL(R.cost.total) + ' for ' + P.sats + ' satellites</span>' +
+    '<span class="st-note">Based on estimates</span>';
+}
+
+function renderDemand(){
+  var flight = Math.ceil(P.sats * P.panelsPerSat * (1 + P.spares / 100));
+  var ds = devSetsBuilt(P), dev = ds * P.panelsPerSat;
+  document.getElementById("demand").innerHTML =
+    '<div><strong>' + flight + '</strong><span>flight panels, spares included</span></div>' +
+    '<div><strong>' + dev + '</strong><span>test panels</span></div>' +
+    '<div><strong>' + (flight + dev) + '</strong><span>in total</span></div>';
+  var names = ["structural model (fit and weight)", "engineering model (trial build)", "qualification model (proves the design)", "one extra test set"];
+  var sets = names.slice(0, P.devSets);
+  if(P.qualApproach === "pf" && P.devSets >= 3) sets.splice(2, 1);
+  var t;
+  if(ds === 0) t = "No test sets are planned, so the first panels made are flight panels, with nothing tested beforehand.";
+  else t = "Test sets: " + listJoin(sets) + ".";
+  if(P.qualApproach === "pf" && P.devSets >= 3) t += " Step 2 is set to protoflight, so the qualification model is not built.";
+  else if(P.devSets === 2 && P.qualApproach === "qm") t += " With no qualification model, the engineering model takes the launch tests.";
+  else if(P.devSets === 1) t += " With no engineering model, the flight panels take the launch tests.";
+  t += " Across " + P.years + (P.years === 1 ? " year" : " years") + " that is roughly " + Math.round((flight + dev) / P.years) + " panels a year. That is a small order for a composites maker, which favours buying over building our own shop.";
+  document.getElementById("demandNote").textContent = t;
+}
+
+function renderFibres(){
+  var host = document.getElementById("fibres");
+  host.innerHTML = Object.keys(FIBRES).map(function(k){
+    var f = FIBRES[k], on = P.fibre === k;
+    return '<button type="button" class="fib" role="radio" aria-checked="' + on + '" data-fib="' + k + '"><b>' + f.name + '</b><span>' + f.cls + '</span><span>Cost ' + f.costMult + '× standard, +' + f.leadAdd + ' wk lead</span><span>' + f.suppliers + ' suppliers</span></button>';
+  }).join("");
+}
+document.addEventListener("click", function(e){
+  var b = e.target.closest && e.target.closest("[data-fib]"); if(!b) return;
+  P.fibre = b.dataset.fib; render();
+  var nb = document.querySelector('[data-fib="' + P.fibre + '"]'); if(nb) nb.focus();
+});
+
+function renderExport(){
+  var g = 9.81, host = document.getElementById("export");
+  var focused = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.rho : null;
+  var h = '<thead><tr><th>Fibre</th><th class="num">E (GPa)</th><th class="num">Strength (GPa)</th><th>Density (g/cm³)</th><th class="num">Specific modulus (10⁶ m)</th><th class="num">Specific strength (10⁴ m)</th><th>1C010.b</th><th>1C210.a</th></tr></thead><tbody>';
+  Object.keys(FIBRES).forEach(function(k){
+    var f = FIBRES[k], rho = P["rho_" + k];
+    var sm = f.E * 1e9 / (rho * 1000 * g) / 1e6, ss = f.s * 1e9 / (rho * 1000 * g) / 1e4;
+    var c1 = sm > 14.65 && ss > 26.82, c2 = sm >= 12.7 || ss >= 23.5;
+    h += '<tr' + (k === P.fibre ? ' class="sel"' : '') + '><td>' + f.name + '</td><td class="num">' + f.E + '</td><td class="num">' + f.s.toFixed(2) + '</td>' +
+      '<td><input type="number" step="0.01" min="1" max="2.5" value="' + rho + '" data-rho="' + k + '" aria-label="Density of ' + f.name + '"> <span class="small">' + f.rhoNote + '</span></td>' +
+      '<td class="num">' + sm.toFixed(1) + '</td><td class="num">' + ss.toFixed(1) + '</td>' +
+      '<td class="' + (c1 ? "yes" : "no") + '">' + (c1 ? "Controlled" : "Below") + '</td><td class="' + (c2 ? "yes" : "no") + '">' + (c2 ? "Controlled" : "Below") + '</td></tr>';
+  });
+  if(focused){
+    host.querySelectorAll("tbody tr").forEach(function(tr, i){
+      var k = Object.keys(FIBRES)[i], f = FIBRES[k], rho = P["rho_" + k];
+      var sm = f.E * 1e9 / (rho * 9810) / 1e6, ss = f.s * 1e9 / (rho * 9810) / 1e4;
+      var c1 = sm > 14.65 && ss > 26.82, c2 = sm >= 12.7 || ss >= 23.5, td = tr.children;
+      td[4].textContent = sm.toFixed(1); td[5].textContent = ss.toFixed(1);
+      td[6].className = c1 ? "yes" : "no"; td[6].textContent = c1 ? "Controlled" : "Below";
+      td[7].className = c2 ? "yes" : "no"; td[7].textContent = c2 ? "Controlled" : "Below";
+      tr.className = k === P.fibre ? "sel" : "";
+    });
+    return;
+  }
+  host.innerHTML = h + '</tbody>';
+}
+
+function renderRoutes(){
+  var best = {fast:null, cheap:null};
+  ROUTES.forEach(function(r){
+    var R = RES[r.id];
+    if(!best.fast || R.sch.deliver < RES[best.fast].sch.deliver) best.fast = r.id;
+    if(!best.cheap || R.cost.total < RES[best.cheap].cost.total) best.cheap = r.id;
+  });
+  document.getElementById("routeCards").innerHTML = ROUTES.map(function(r){
+    var R = RES[r.id], on = r.id === selected, late = R.slack < 0, top = R.risks[0];
+    var tags = [];
+    if(r.id === best.fast) tags.push("Fastest");
+    if(r.id === best.cheap) tags.push("Cheapest");
+    if(!late) tags.push("Meets the date");
+    return '<label class="rc' + (on ? " sel" : "") + '" style="--rc:' + r.color + '"><input type="radio" name="route" value="' + r.id + '"' + (on ? " checked" : "") + '>' +
+      '<p class="t">' + esc(r.name) + '</p><p class="d">' + esc(r.desc) + '</p><dl>' +
+      '<dt>Flight panels</dt><dd>Month ' + fmtM(R.sch.deliver) + ', <span class="' + (late ? "late-t" : "ok-t") + '">' + (late ? fmtW(-R.slack) + " late" : fmtW(R.slack) + " to spare") + '</span></dd>' +
+      '<dt>Fit-and-weight panels</dt><dd>' + (R.sch.sm === null ? "None planned" : "Week " + Math.round(R.sch.sm)) + '</dd>' +
+      '<dt>Programme cost</dt><dd>' + fmtL(R.cost.total) + ', ' + fmtL(R.cost.unit) + ' a panel</dd>' +
+      '<dt>Biggest risk</dt><dd>' + esc(top.n) + ' (' + top.s + ' of 5)</dd></dl>' +
+      (tags.length ? '<div class="tags">' + tags.map(function(t){ return '<span>' + t + '</span>'; }).join("") + '</div>' : "") + '</label>';
+  }).join("");
+}
+
+function renderOwners(){
+  var idx = ROUTES.map(function(r){ return r.id; }).indexOf(selected);
+  var h = '<thead><tr><th></th>' + ROUTES.map(function(r, i){ return '<th' + (i === idx ? ' style="color:var(--ink)"' : '') + '>' + esc(r.short) + '</th>'; }).join("") + '</tr></thead><tbody>';
+  OWNERS.forEach(function(row){
+    h += '<tr><td>' + esc(row[0]) + '</td>' + row.slice(1).map(function(c, i){ return '<td' + (i === idx ? ' style="background:var(--kapton-soft);font-weight:600"' : '') + '>' + esc(c) + '</td>'; }).join("") + '</tr>';
+  });
+  document.getElementById("owners").innerHTML = h + '</tbody>';
+}
+
+function renderChips(){
+  document.getElementById("chips").innerHTML = STRESS.map(function(s){
+    var on = P[s.key] === s.val;
+    return '<button type="button" data-stress="' + s.id + '" aria-pressed="' + on + '">' + esc(s.label) + '</button>';
+  }).join("");
+}
+document.addEventListener("click", function(e){
+  var b = e.target.closest && e.target.closest("[data-stress]"); if(!b) return;
+  var s = STRESS.filter(function(x){ return x.id === b.dataset.stress; })[0];
+  if(P[s.key] === s.val){ P[s.key] = (s.key in stressPrev && stressPrev[s.key] !== s.val) ? stressPrev[s.key] : DEF[s.key]; delete stressPrev[s.key]; }
+  else { stressPrev[s.key] = P[s.key]; P[s.key] = s.val; }
+  render();
+});
+
+function renderGantt(need){
+  var s = RES[selected].sch;
+  document.getElementById("s4title").textContent = "Schedule: " + lc(route(selected).name);
+  var rows = s.tasks.slice().sort(function(a, b){ return a.start - b.start || a.end - b.end; });
+  var maxW = Math.max(s.deliver, need) + 4, W = 960, L = 300, R = 24, top = 36, rh = 26, H = top + rows.length * rh + 14;
+  var k = (W - L - R) / maxW, x = function(w){ return L + w * k; };
+  var g = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Schedule for ' + esc(route(selected).name) + '">';
+  for(var m = 0; m * WK <= maxW; m++){
+    var xm = x(m * WK);
+    g += '<line x1="' + xm + '" x2="' + xm + '" y1="' + (top - 8) + '" y2="' + (H - 6) + '" stroke="var(--rule)"/>';
+    if(m > 0) g += '<text x="' + (xm + 3) + '" y="' + (top - 14) + '" class="muted">M' + m + '</text>';
+  }
+  var xd = x(need);
+  g += '<line x1="' + xd + '" x2="' + xd + '" y1="' + (top - 28) + '" y2="' + (H - 4) + '" stroke="var(--kapton)" stroke-width="2.5"/>';
+  g += '<text x="' + (xd - 5) + '" y="' + (top - 26) + '" text-anchor="end" style="font-weight:650;fill:var(--kapton)">Needed, month ' + P.deadlineMonths + '</text>';
+  rows.forEach(function(t, i){
+    var y = top + i * rh;
+    g += '<text x="' + (L - 10) + '" y="' + (y + 17) + '" text-anchor="end"' + (t.crit ? ' style="font-weight:650"' : ' class="muted"') + '>' + esc(t.name) + '</text>';
+    if(t.kind === "ms"){
+      var cx = x(t.end), cy = y + 13;
+      g += '<path d="M' + cx + ' ' + (cy - 7) + ' L' + (cx + 7) + ' ' + cy + ' L' + cx + ' ' + (cy + 7) + ' L' + (cx - 7) + ' ' + cy + ' Z" fill="' + (t.crit ? "var(--crit)" : "var(--ink)") + '"/>';
+      g += '<text x="' + (cx + 11) + '" y="' + (y + 17) + '" class="muted">week ' + r1(t.end) + '</text>';
+    } else {
+      var bw = Math.max(2, t.dur * k), fill = t.crit ? "var(--crit)" : (t.kind === "dev" ? "var(--bar-dev)" : "var(--bar)");
+      g += '<rect x="' + x(t.start) + '" y="' + (y + 5) + '" width="' + bw + '" height="16" rx="2" fill="' + fill + '"/>';
+      g += '<text x="' + (x(t.start) + bw + 6) + '" y="' + (y + 17) + '" class="muted">' + r1(t.start) + ' to ' + r1(t.end) + '</text>';
+    }
+  });
+  document.getElementById("gantt").innerHTML = g + '</svg>';
+}
+
+var SENS_KEYS = ["rfqAward","designFreeze","licenceWeeks","prepregLead","coreLead","smFab","fabSet","testWait","qualTest","accept","intlShip","fabProcessQual","chainSetup","chainProcessQual"];
+function sensitivity(rid){
+  var base = RES[rid].sch.deliver, out = [];
+  SENS_KEYS.forEach(function(key){
+    var q = clone(P); q[key] = P[key] + 4;
+    var d = buildRoute(rid, q).deliver - base;
+    if(d > 0.001) out.push({k:key, d:d});
+  });
+  return out.sort(function(a, b){ return b.d - a.d; });
+}
+function renderSens(){
+  var out = sensitivity(selected);
+  document.getElementById("sensNote").textContent = "If one task slips by 4 weeks and nothing else changes, delivery moves by this much. Tasks not shown have spare time, so a slip there does not matter.";
+  var mx = out.length ? out[0].d : 1;
+  document.getElementById("sens").innerHTML = out.length ? out.map(function(o){
+    return '<div>' + esc(PBYID[o.k].label) + '</div><div><div class="barw"><div class="barf" style="width:' + (o.d / mx * 100) + '%"></div></div><span class="val">+' + fmtW(o.d) + '</span></div>';
+  }).join("") : '<div>No single 4-week slip moves the date.</div><div></div>';
+}
+
+function crossover(){
+  var a = RES.chain.cost, b = RES.tki.cost;
+  if(a.perSat >= b.perSat) return {n:null, text:"With these inputs, building in-house never becomes cheaper than buying finished panels in India."};
+  var n = Math.ceil((a.start - b.start) / (b.perSat - a.perSat));
+  if(n <= 0) return {n:0, text:"With these inputs, building in-house is cheaper from the first satellite."};
+  return {n:n, text: n <= P.sats ? "Building in-house becomes cheaper than buying finished panels in India after about " + n + " satellites." : "Building in-house only becomes cheaper than buying finished panels in India after about " + n + " satellites, beyond the " + P.sats + " planned."};
+}
+function renderCost(){
+  var n = P.sats, W = 960, H = 340, L = 74, R = 200, top = 20, B = 40;
+  var series = ROUTES.map(function(r){ var c = RES[r.id].cost, pts = []; for(var i = 0; i <= n; i++) pts.push(c.start + i * c.perSat); return {r:r, pts:pts}; });
+  var ymax = 0; series.forEach(function(s){ s.pts.forEach(function(v){ ymax = Math.max(ymax, v); }); }); ymax = ymax * 1.08 || 1;
+  var x = function(i){ return L + i * (W - L - R) / Math.max(1, n); }, y = function(v){ return H - B - v * (H - top - B) / ymax; };
+  var g = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Cumulative programme cost by route">';
+  for(var j = 0; j <= 4; j++){ var v = ymax * j / 4, yy = y(v); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--rule)"/><text x="' + (L - 8) + '" y="' + (yy + 4) + '" text-anchor="end" class="muted">' + fmtL(v) + '</text>'; }
+  var st = n > 15 ? 5 : n > 8 ? 2 : 1;
+  for(var i = 0; i <= n; i += st) g += '<text x="' + x(i) + '" y="' + (H - B + 18) + '" text-anchor="middle" class="muted">' + i + '</text>';
+  g += '<text x="' + ((L + W - R) / 2) + '" y="' + (H - 6) + '" text-anchor="middle" class="muted">Satellites built</text>';
+  series.forEach(function(s){
+    g += '<path d="' + s.pts.map(function(v, i){ return (i ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1); }).join(" ") + '" fill="none" stroke="' + s.r.color + '" stroke-width="' + (s.r.id === selected ? 3.5 : 1.8) + '"' + (s.r.id === selected ? "" : ' opacity=".75"') + '/>';
+  });
+  var labels = series.map(function(s){ return {s:s, y:y(s.pts[n])}; }).sort(function(a, b){ return a.y - b.y; });
+  for(var q = 1; q < labels.length; q++) if(labels[q].y - labels[q - 1].y < 16) labels[q].y = labels[q - 1].y + 16;
+  labels.forEach(function(l){ g += '<text x="' + (W - R + 8) + '" y="' + (l.y + 4) + '" style="fill:' + l.s.r.color + ';font-weight:' + (l.s.r.id === selected ? 700 : 500) + '">' + esc(l.s.r.short) + ', ' + fmtL(l.s.pts[n]) + '</text>'; });
+  document.getElementById("costChart").innerHTML = g + '</svg>';
+  document.getElementById("costNote").textContent = crossover().text;
+}
+
+function renderRisks(){
+  document.getElementById("riskTitle").textContent = "Risks: " + lc(route(selected).name);
+  document.getElementById("risks").innerHTML = '<thead><tr><th>Risk</th><th>Score</th><th>Mitigation</th></tr></thead><tbody>' + RES[selected].risks.map(function(r){
+    var d = ""; for(var i = 1; i <= 5; i++) d += '<i class="' + (i <= r.s ? "on" : "") + '"></i>';
+    return '<tr><td>' + esc(r.n) + '</td><td><span class="dots' + (r.s >= 4 ? " hi" : "") + '" aria-label="' + r.s + ' of 5">' + d + '</span></td><td>' + esc(r.m) + '</td></tr>';
+  }).join("") + '</tbody>';
+}
+
+function backupDeliver(rid){
+  var b = backupOf(rid);
+  return RES[b].sch.deliver + (P.supply === "standby" ? P.standbyDelay : 0);
+}
+function renderSupply(){
+  var R = RES[selected], b = backupOf(selected), bd = backupDeliver(selected), need = P.deadlineMonths * WK, t;
+  var bn = BACKUP_NAME[b];
+  if(P.supply === "one") t = "No backup. If the supplier fails, we start from scratch with a new one, which means a new RFQ, audit and qualification. A standby agreement with " + bn + " would cost about " + fmtL(P.standbyFee + P.backupAudit) + ".";
+  else if(P.supply === "standby") t = "Backup: " + bn + ". It costs " + fmtL(R.cost.extra) + " up front. If we switch it on today it could deliver flight panels in month " + fmtM(bd) + ", " + (bd <= need ? fmtW(need - bd) + " before the need" : fmtW(bd - need) + " after the need") + ".";
+  else t = "Second supplier: " + bn + ", building " + P.secondShare + "% of the panels. Qualifying it adds " + fmtL(R.cost.extra) + ", and its first set could arrive in month " + fmtM(bd) + ". The cost per panel becomes a blend of both suppliers' prices.";
+  if(selected === "fi" || selected === "chain") t += " On this route the backup is a finished-panel supplier, because a second fabricator or shop would still depend on the same materials.";
+  document.getElementById("supplyOut").textContent = t;
+}
+
+function gateSelect(key){
+  var v = P["g_" + key];
+  return '<select data-gate="' + key + '" aria-label="Approval stage">' + GATES.map(function(g){ return '<option value="' + g.id + '"' + (g.id === v ? " selected" : "") + '>' + esc(g.name) + '</option>'; }).join("") + '</select>';
+}
+function vendorScore(v){
+  var n = 0, tot = 0;
+  CRITS.forEach(function(c){ var x = P["s_" + v + "_" + c.id]; if(x > 0){ n++; tot += c.w * x; } });
+  if(n < CRITS.length) return {n:n, score:null};
+  var sc = Math.round(tot / 5);
+  return {n:n, score:sc, verdict: sc >= 75 ? "Shortlist" : sc >= 50 ? "Needs a closer look" : "Drop"};
+}
+function vendorCard(id){
+  var v = VENDORS[id], sc = vendorScore(id), open = GIDX[P["g_" + id]] >= GIDX.reply;
+  var label = sc.score !== null ? 'Score ' + sc.score + ' of 100: <span class="verdict-s">' + sc.verdict + '</span>' : (open ? (sc.n ? "Partly scored, " + sc.n + " of 5" : "Not yet scored") : "Scores open once a reply arrives");
+  var grid = CRITS.map(function(c){
+    var x = P["s_" + id + "_" + c.id];
+    return '<label for="sc_' + id + c.id + '">' + esc(c.name) + ' <span class="small">(' + c.w + '%)</span></label><select id="sc_' + id + c.id + '" data-score="' + id + '_' + c.id + '"' + (open ? "" : " disabled") + '><option value="0">Not scored</option>' +
+      [1,2,3,4,5].map(function(k){ return '<option value="' + k + '"' + (k === x ? " selected" : "") + '>' + k + '</option>'; }).join("") + '</select>';
+  }).join("");
+  return '<div class="vend"><div class="vh"><span><a href="' + v.url + '" target="_blank" rel="noopener">' + esc(v.name) + '</a> <span class="small">' + esc(v.place) + '</span></span>' + gateSelect(id) + '</div>' +
+    '<p>' + esc(v.found) + '</p><p class="small">Ask them: ' + esc(v.ask) + '</p>' +
+    '<details><summary>' + label + '</summary><div class="scgrid">' + grid + '</div></details></div>';
+}
+function renderVendors(){
+  var host = document.getElementById("vendors"), h = "";
+  if(selected === "chain"){
+    document.getElementById("vendNote").textContent = "On this route we buy each stage ourselves, so each stage has its own supplier and its own test before the next stage can start. Stages marked not researched still need a search.";
+    STAGES.forEach(function(st){
+      h += '<div class="vend"><div class="vh"><span><b>' + esc(st.stage) + '</b></span>' + gateSelect(st.id) + '</div>' +
+        '<p>Qualified means: ' + esc(st.q) + '</p><p class="small">Candidates: ' + (st.ids.length ? st.ids.map(function(i){ return '<a href="' + VENDORS[i].url + '" target="_blank" rel="noopener">' + esc(VENDORS[i].name) + '</a>'; }).join(", ") : "not researched yet") + '</p></div>';
+    });
+  } else {
+    document.getElementById("vendNote").textContent = "Leads from public sources, not approved suppliers. Move each one through the approval stages as replies come in; the scores unlock once a supplier has answered the RFI.";
+    ROUTE_VENDORS[selected].forEach(function(g){
+      if(g.title) h += '<p class="vgroup">' + esc(g.title) + '</p>';
+      h += g.ids.map(vendorCard).join("");
+    });
+  }
+  var openDetails = {};
+  host.querySelectorAll && host.querySelectorAll("details").forEach(function(d, i){ if(d.open) openDetails[i] = true; });
+  host.innerHTML = h;
+  host.querySelectorAll && host.querySelectorAll("details").forEach(function(d, i){ if(openDetails[i]) d.open = true; });
+  document.getElementById("gates").innerHTML = GATES.map(function(g){ return '<dt>' + esc(g.name) + '</dt><dd>' + esc(g.means) + '</dd>'; }).join("");
+  document.getElementById("crits").innerHTML = CRITS.map(function(c){ return '<dt>' + esc(c.name) + ', ' + c.w + '%</dt><dd>' + esc(c.help) + '</dd>'; }).join("");
+}
+function furthestVendor(){
+  var ids = selected === "chain" ? STAGES.map(function(s){ return s.id; }) : [].concat.apply([], ROUTE_VENDORS[selected].map(function(g){ return g.ids; }));
+  var best = null;
+  ids.forEach(function(id){ var gi = GIDX[P["g_" + id]]; if(!best || gi > best.gi) best = {id:id, gi:gi}; });
+  return best;
+}
+
+function renderTerms(){
+  var t = [
+    "Our requirements, inspection rights and export rules pass down to every sub-supplier, including the fibre, core, adhesive and insert makers.",
+    "Every panel comes with a certificate of conformance and a record tracing it back to each material batch.",
+    "We can watch the key steps: laying up the skins, bonding, potting inserts and testing.",
+    "No change to materials, process or factory without our written approval, because any change undoes the qualification.",
+    "Payments are tied to passed stages: first panel, qualification, then each flight set accepted.",
+    "Late-delivery penalties are capped and tied to the contract delivery date, not the launch date.",
+    "Every flight insert is pull-tested and the force record ships with the panel.",
+    "We own the tooling and every drawing and data file we supply, and they come back to us if we part ways.",
+    "Rejected panels are repaired or replaced at the supplier's cost within a set time, and a joint review decides any use-as-is case.",
+    "The drawings and load cases are covered by an NDA and handled as export-controlled technical data.",
+    "The supplier gives notice before any material is discontinued, with a chance to make a last-time buy."
+  ];
+  if(selected === "tki") t.push("The supplier files the import licence, with our end-use statement, and tells us at once if it is delayed or refused.");
+  if(selected === "intl") t.push("The price is fixed in one currency with a cap on freight, the delivery terms are named, and the supplier obtains its own export licence.");
+  if(selected === "fi") t.push("The fabricator inspects our materials on arrival, keeps prepreg frozen with its out-of-freezer time logged, and pays for any of our material it scraps.");
+  if(selected === "chain") t.push("Each stage's order requires test results for every batch, and the coupon lab must be accredited.");
+  if(P.supply === "standby") t.push("The backup signs a paid standby agreement that holds its price and lead time for a year, with the trigger for switching it on written down.");
+  if(P.supply === "two") t.push("Work is split between two suppliers by an agreed share, and we can move volume between them.");
+  document.getElementById("termsNote").textContent = "For " + lc(route(selected).name) + (P.supply === "one" ? "" : P.supply === "standby" ? ", with a backup on standby" : ", with two suppliers") + ". Each line is a clause to agree before the order is placed.";
+  document.getElementById("terms").innerHTML = t.map(function(x){ return "<li>" + esc(x) + "</li>"; }).join("");
+}
+
+function renderSummary(){
+  var R = RES[selected], r = route(selected), late = R.slack < 0;
+  var meeting = ROUTES.filter(function(x){ return RES[x.id].slack >= 0; });
+  var cheapestMeeting = meeting.slice().sort(function(a, b){ return RES[a.id].cost.total - RES[b.id].cost.total; })[0];
+  var p = [];
+  if(!late){
+    p.push("I would go with " + r.prose + (P.supply === "standby" ? ", with " + BACKUP_NAME[backupOf(selected)] + " on standby as a backup" : P.supply === "two" ? ", with " + BACKUP_NAME[backupOf(selected)] + " as a second supplier" : "") + ". On these inputs it delivers flight panels in month " + fmtM(R.sch.deliver) + ", " + fmtW(R.slack) + " before they are needed, for " + fmtL(R.cost.total) + " across " + P.sats + " satellites.");
+    if(cheapestMeeting && cheapestMeeting.id !== selected){
+      var o = RES[cheapestMeeting.id];
+      p.push(cap(cheapestMeeting.prose) + " also meets the date and costs " + fmtL(R.cost.total - o.cost.total) + " less. The choice between the two comes down to risk. The biggest risk here is " + lc(R.risks[0].n) + " at " + R.risks[0].s + " of 5; for the cheaper route it is " + lc(o.risks[0].n) + " at " + o.risks[0].s + " of 5.");
+    }
+  } else {
+    p.push("On these inputs, " + r.prose + " misses the date by " + fmtW(-R.slack) + " and delivers in month " + fmtM(R.sch.deliver) + ".");
+    if(meeting.length === 1) p.push(cap(meeting[0].prose) + " is the only route that meets it, at " + fmtL(RES[meeting[0].id].cost.total) + ".");
+    else if(meeting.length > 1) p.push(cap(listJoin(meeting.map(function(x){ return x.prose; }))) + " meet it. The cheapest of those is " + cheapestMeeting.prose + " at " + fmtL(RES[cheapestMeeting.id].cost.total) + ".");
+    else p.push("No route meets the date with these inputs, so either the date or the mitigations in step 4 have to change.");
+  }
+  var bd = backupDeliver(selected), needW = P.deadlineMonths * WK;
+  if(P.supply === "one") p.push("This relies on one supplier for a part the satellite cannot fly without. I would not call it final without a backup. A standby agreement with " + BACKUP_NAME[backupOf(selected)] + " would cost about " + fmtL(P.standbyFee + P.backupAudit) + ".");
+  else if(P.supply === "standby") p.push("The backup costs " + fmtL(R.cost.extra) + " up front. Switched on today, it could deliver in month " + fmtM(bd) + (bd <= needW ? ", still before the need." : ", which would be " + fmtW(bd - needW) + " late, so the trigger to switch has to come early."));
+  else p.push("Qualifying the second supplier adds " + fmtL(R.cost.extra) + ". Its first set could arrive in month " + fmtM(bd) + ".");
+  var fv = furthestVendor();
+  if(fv && fv.gi === 0) p.push("No supplier for this route has been contacted yet. Sending the RFIs is the first job, and the candidates are listed in step 3.");
+  else if(fv){ var nm = selected === "chain" ? STAGES.filter(function(x){ return x.id === fv.id; })[0].stage.toLowerCase() : VENDORS[fv.id].name; p.push("The furthest along is " + nm + ", at the " + (GATES[fv.gi].id === "rfi" ? "RFI sent" : lc(GATES[fv.gi].name)) + " stage."); }
+  var sens = sensitivity(selected).slice(0, 3);
+  if(sens.length) p.push("The date depends most on " + listJoin(sens.map(function(o){ return SHORT[o.k]; })) + ". So the first things to ask suppliers are " + listJoin(sens.map(function(o){ return RFI[o.k]; })) + ".");
+  var mit = [];
+  if(P.preBuy && !(P.stock && (selected === "tki" || selected === "intl"))) mit.push("ordering slow materials early under a letter of intent");
+  if(P.overlap && derived(P).hasEM) mit.push(P.qualApproach === "pf" ? "building the flight set alongside the engineering model" : "building flight panels while testing runs");
+  if(P.smEarly && P.devSets > 0) mit.push("making the fit-and-weight panels from cheaper material");
+  if(P.stock && (selected === "tki" || selected === "intl")) mit.push("a supplier that already holds flight material");
+  if(mit.length) p.push("This plan assumes " + listJoin(mit) + ". Untick them in step 4 to see the date without them.");
+  else p.push("No mitigations are switched on. Tick them in step 4 to see how much time each one saves.");
+  var d = derived(P);
+  if(!d.hasEM) p.push("With fewer than two test sets there is no engineering model, so the flight panels take the launch tests. A failure there costs flight hardware.");
+  var cx = crossover();
+  p.push(cx.text + (cx.n === null || cx.n > P.sats ? " That supports buying finished panels for the first satellites and revisiting the question once volumes are known." : ""));
+  p.push(FIBRES[P.fibre].name + " is on at least one export control list, as is every aerospace fibre checked in step 2, so a licence stays on the plan." + (P.endUse === "dual" ? " The dual-use declaration adds " + fmtW(P.dualUseAdder) + " of review in this model." : ""));
+  p.push(PARAMS.filter(function(x){ return x.ph; }).length + " of the inputs are placeholders. Supplier answers on the questions above would do the most to firm this up.");
+  document.getElementById("summary").innerHTML = p.map(function(t){ return "<p>" + esc(t) + "</p>"; }).join("");
+}
+
+/* ---------- tools ---------- */
+document.getElementById("reset").addEventListener("click", function(){ P = clone(DEF); selected = "tki"; stressPrev = {}; render(); go(1); });
+document.getElementById("copyLink").addEventListener("click", function(){
+  var b = this;
+  function done(ok){ b.textContent = ok ? "Link copied" : "Copy the address bar instead"; setTimeout(function(){ b.textContent = "Copy link to this scenario"; }, 1800); }
+  try{ navigator.clipboard.writeText(location.href).then(function(){ done(true); }, function(){ done(false); }); }catch(e){ done(false); }
+});
+
+readHash(); buildSteps(); buildControls(); render(); showStep();
+})();
+</script>
+</body>
+</html>
